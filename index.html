@@ -76,7 +76,28 @@ function esc(s){return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&l
 function drawCharts(){if(typeof Chart==='undefined')return;Object.values(charts).forEach(c=>c.destroy());let ws=[...state.weeks].sort((a,b)=>a.start.localeCompare(b.start)),labels=ws.map(w=>w.label),accent=getComputedStyle(document.body).getPropertyValue('--accent').trim(),accent2=getComputedStyle(document.body).getPropertyValue('--accent2').trim(),red=getComputedStyle(document.body).getPropertyValue('--red').trim(),muted=getComputedStyle(document.body).getPropertyValue('--muted').trim();Chart.defaults.color=muted;charts.sales=new Chart(document.getElementById('salesChart'),{type:'line',data:{labels,datasets:[{label:'Ventas',data:ws.map(salesTotal),borderColor:accent,backgroundColor:accent+'33',fill:true,tension:.42,pointRadius:4},{label:'Utilidad',data:ws.map(w=>salesTotal(w)-expensesForWeek(w)),borderColor:accent2,tension:.42,pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(150,170,190,.12)'}}}}});let cats=CATS.map(c=>[c,state.expenses.filter(x=>x.type==='business'&&x.category===c).reduce((s,x)=>s+n(x.amount),0)]).filter(x=>x[1]>0);charts.exp=new Chart(document.getElementById('expenseChart'),{type:'doughnut',data:{labels:cats.map(x=>x[0]),datasets:[{data:cats.map(x=>x[1]),backgroundColor:[accent,accent2,'#f7ba55',red,'#ff9f43','#57d1c9','#c18cff']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}})}
 function backup(){let blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Respaldo_GEMELITAS_AA_'+today()+'.json';a.click();URL.revokeObjectURL(a.href)}function restoreFile(){let i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{let r=new FileReader();r.onload=()=>{try{state=JSON.parse(r.result);save();render();alert('Respaldo restaurado correctamente.')}catch{alert('Archivo inválido.')}};r.readAsText(e.target.files[0])};i.click()}
 ensureWeek();render();
-</script>
+async function loginUser(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const message = document.getElementById('loginMessage');
+
+  message.textContent = 'Iniciando sesión...';
+
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: email,
+    password: password
+  });
+
+  if (error) {
+    message.textContent = 'Error: ' + error.message;
+    return;
+  }
+
+  document.getElementById('loginScreen').style.display = 'none';
+  message.textContent = '';
+
+  render();
+}</script>
 <script>
 if ('serviceWorker' in navigator) { window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js')); }
 </script>
