@@ -20,6 +20,9 @@ body[data-theme="violet"]{--bg:#100d1f;--bg2:#19132d;--card:#201a35;--card2:#292
 </head>
 <body data-theme="dark"><div class="app"><div class="top"><div class="brand"><div class="logo">🍽️</div><div><h1 id="brandName">GEMELITAS A&A S.A.C.</h1><div class="sub">Sistema inteligente de gestión financiera</div></div></div><div class="row"><button class="btn secondary small" onclick="backup()">💾 Respaldo</button><button class="btn secondary small" onclick="restoreFile()">📥 Restaurar</button></div></div><div class="nav" id="nav"></div><main id="main"></main></div><div class="undo" id="undo"></div>
 <script>
+const SUPABASE_URL = https://wkcichivvfptfcprpgzs.supabase.co
+const SUPABASE_KEY = sb_publishable_H2NBtIqEjs3jwuF6Pdi0dQ_x49-9Ucp
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const CATS=['Insumos','Carnes','Transporte','Combustible','Descartables','Personal','Gas','Agua','Luz','Internet','Tienda','Otros'];
 let state=JSON.parse(localStorage.getItem('gemelitas_pro_v1')||'null')||{view:'dashboard',period:'semana',settings:{name:'GEMELITAS A&A S.A.C.',cash:0,theme:'dark',font:16},weeks:[],sales:[],expenses:[],income:[],notes:[],history:[]};let charts={};let undoData=null;
