@@ -67,8 +67,63 @@ function settingsView(){return `<div class="section"><h2>⚙️ Ajustes</h2></di
 function render(){save();document.getElementById('nav').innerHTML=nav();let v=state.view;document.getElementById('main').innerHTML=v==='dashboard'?dashboard():v==='week'?weekView():v==='income'?incomeView():v==='expenses'?expensesView():v==='notes'?notesView():v==='reports'?reports():settingsView();if(v==='dashboard')setTimeout(drawCharts,30)}
 function wedit(k,v){selectedWeek()[k]=k==='price'?n(v):v;save();render()}function dayedit(d,v){selectedWeek().days[d]=n(v);save();render()}function newWeek(){let d=new Date(selectedWeek().start+'T12:00:00');d.setDate(d.getDate()+7);state.currentWeek=weekForDate(d.toISOString().slice(0,10));ensureWeek(state.currentWeek);render()}
 function addSale(){let x={id:uid(),date:document.getElementById('sdate').value,product:document.getElementById('sprod').value||'Venta adicional',qty:n(document.getElementById('sqty').value),price:n(document.getElementById('sprice').value)};if(x.qty<=0||x.price<=0)return alert('Ingresa cantidad y precio válidos.');state.sales.push(x);save();render()}function listSales(w){let a=state.sales.filter(x=>weekForDate(x.date)===w.start);return a.length?a.map(x=>`<div class="item"><div><b>${esc(x.product)}</b><small>${x.date} · ${x.qty} × ${money(x.price)}</small></div><div><b>${money(x.qty*x.price)}</b><div class="actions"><button class="btn secondary small" onclick="editSale('${x.id}')">✏️</button><button class="btn secondary small" onclick="deleteSale('${x.id}')">🗑</button></div></div></div>`).join(''):'<div class="empty">Sin ventas adicionales.</div>'}
-function addIncome(){let x={id:uid(),date:document.getElementById('idate').value,description:document.getElementById('idesc').value||'Ingreso',amount:n(document.getElementById('iamt').value),weekId:document.getElementById('iweek').value};if(x.amount<=0)return alert('Ingresa un monto válido.');state.income.push(x);save();render()}function itemIncome(x){return `<div class="item"><div><b>${esc(x.description)}</b><small>${x.date}</small></div><div class="green"><b>${money(x.amount)}</b><div class="actions"><button class="btn secondary small" onclick="editIncome('${x.id}')">✏️</button><button class="btn secondary small" onclick="deleteIncome('${x.id}')">🗑</button></div></div></div>`}
-function addExpense(){let x={id:uid(),date:document.getElementById('edate').value,type:document.getElementById('etype').value,category:document.getElementById('ecat').value,amount:n(document.getElementById('eamt').value),description:document.getElementById('edesc').value};if(x.amount<=0)return alert('Ingresa un monto válido.');state.expenses.push(x);save();render()}function itemExpense(x){return `<div class="item"><div><b>${x.type==='business'?'🔴 Negocio':'🟠 Personal'} · ${esc(x.category)}</b><small>${x.date}${x.description?' · '+esc(x.description):''}</small></div><div class="redtxt"><b>−${money(x.amount)}</b><div class="actions"><button class="btn secondary small" onclick="editExpense('${x.id}')">✏️</button><button class="btn secondary small" onclick="deleteExpense('${x.id}')">🗑</button></div></div></div>`}
+async function addIncome(){
+  const date=document.getElementById('incomeDate').value;
+  const description=document.getElementById('incomeDesc').value.trim();
+  const amount=Number(document.getElementById('incomeAmount').value);
+
+  if(!date || !description || !amount || amount<=0){
+    alert('Completa todos los datos correctamente.');
+    return;
+  }
+
+  const {data:userData,error:userError}=await sb.auth.getUser();
+
+  if(userError || !userData.user){
+    alert('La sesión no está disponible.');
+    return;
+  }
+
+  const {data:member,error:memberError}=await sb
+    .from('company_members')
+    .select('company_id')
+    .eq('user_id',userData.user.id)
+    .limit(1)
+    .single();
+
+  if(memberError){
+    alert('No se encontró la empresa del usuario.');
+    console.error(memberError);
+    return;
+  }
+
+  const {data,error}=await sb
+    .from('income')
+    .insert({
+      company_id:member.company_id,
+      date:date,
+      description:description,
+      amount:amount
+    })
+    .select()
+    .single();
+
+  if(error){
+    alert('Error al guardar el ingreso: '+error.message);
+    console.error(error);
+    return;
+  }
+
+  state.income.push({
+    id:data.id,
+    date:data.date,
+    description:data.description,
+    amount:Number(data.amount)
+  });
+
+  save();
+  render();
+}function addExpense(){let x={id:uid(),date:document.getElementById('edate').value,type:document.getElementById('etype').value,category:document.getElementById('ecat').value,amount:n(document.getElementById('eamt').value),description:document.getElementById('edesc').value};if(x.amount<=0)return alert('Ingresa un monto válido.');state.expenses.push(x);save();render()}function itemExpense(x){return `<div class="item"><div><b>${x.type==='business'?'🔴 Negocio':'🟠 Personal'} · ${esc(x.category)}</b><small>${x.date}${x.description?' · '+esc(x.description):''}</small></div><div class="redtxt"><b>−${money(x.amount)}</b><div class="actions"><button class="btn secondary small" onclick="editExpense('${x.id}')">✏️</button><button class="btn secondary small" onclick="deleteExpense('${x.id}')">🗑</button></div></div></div>`}
 function deleteSale(id){let i=state.sales.findIndex(x=>x.id===id),x=state.sales[i];state.sales.splice(i,1);save();undo('Venta eliminada',()=>state.sales.splice(i,0,x));render()}function deleteIncome(id){let i=state.income.findIndex(x=>x.id===id),x=state.income[i];state.income.splice(i,1);save();undo('Ingreso eliminado',()=>state.income.splice(i,0,x));render()}function deleteExpense(id){let i=state.expenses.findIndex(x=>x.id===id),x=state.expenses[i];state.expenses.splice(i,1);save();undo('Gasto eliminado',()=>state.expenses.splice(i,0,x));render()}function deleteNote(id){let i=state.notes.findIndex(x=>x.id===id),x=state.notes[i];state.notes.splice(i,1);save();undo('Nota eliminada',()=>state.notes.splice(i,0,x));render()}
 function editSale(id){let x=state.sales.find(x=>x.id===id),q=prompt('Cantidad',x.qty),p=prompt('Precio',x.price),d=prompt('Producto',x.product);if(q!==null&&p!==null){x.qty=n(q);x.price=n(p);if(d!==null)x.product=d;save();render()}}function editIncome(id){let x=state.income.find(x=>x.id===id),a=prompt('Monto recibido',x.amount),d=prompt('Concepto',x.description);if(a!==null){x.amount=n(a);if(d!==null)x.description=d;save();render()}}function editExpense(id){let x=state.expenses.find(x=>x.id===id),a=prompt('Monto',x.amount),d=prompt('Descripción',x.description||'');if(a!==null){x.amount=n(a);if(d!==null)x.description=d;save();render()}}
 function addNote(){let t=document.getElementById('noteText').value.trim();if(!t)return;state.notes.unshift({id:uid(),text:t,date:today()});save();render()}
