@@ -937,10 +937,15 @@ const appearance=getGlobalAppearance();
 state.settings.theme=appearance.theme;
 state.settings.font=appearance.font;
 
+const cacheState={
+...structuredClone(state),
+view:'dashboard'
+};
+
 localStorage.setItem(
 'gemelitas_cache_'+
 (currentCompanyId||'none'),
-JSON.stringify(state)
+JSON.stringify(cacheState)
 );
 
 document.body.dataset.theme=
@@ -1145,12 +1150,24 @@ return items.map(
 `
 <button
 class="${state.view===k?'active':''}"
-onclick="state.view='${k}';render()">
+onclick="navigateTo('${k}')">
 ${l}
 </button>
 `
 ).join('');
 
+}
+
+function navigateTo(view){
+if(view==='global'){
+state.view='global';
+render();
+return;
+}
+if(!currentCompanyId)
+return;
+state.view=view;
+render();
 }
 
 async function refreshGlobalMetrics(){
@@ -1317,11 +1334,17 @@ return `
 
 async function openCompanyFromGlobal(id){
 
+if(!id||!currentUser)
+return;
+
 await loadCompany(id);
 
 state.view='dashboard';
 
-localStorage.setItem('gemelitas_active_company',currentCompanyId);
+localStorage.setItem(
+'gemelitas_active_company',
+currentCompanyId
+);
 
 render();
 
@@ -3483,6 +3506,7 @@ console.warn('Caché local inválida',e);
 }
 
 state=localState;
+state.view='dashboard';
 
 localRevision=0;
 
@@ -3563,6 +3587,8 @@ localOldState()
 );
 
 }
+
+state.view='dashboard';
 
 ensureWeek();
 
@@ -3646,6 +3672,8 @@ settings:{
 ...(incoming.settings||{})
 }
 };
+
+state.view='dashboard';
 
 saveLocal();
 
@@ -3818,17 +3846,29 @@ c.name||
 
 async function switchCompany(id){
 
-if(
-id===currentCompanyId
-)
+if(!id||!currentUser)
 return;
 
+if(id===currentCompanyId){
+state.view='dashboard';
+localStorage.setItem(
+'gemelitas_active_company',
+currentCompanyId
+);
+render();
+return;
+}
+
 await loadCompany(id);
+
+state.view='dashboard';
 
 localStorage.setItem(
 'gemelitas_active_company',
 currentCompanyId
 );
+
+render();
 
 }
 
@@ -3864,6 +3904,7 @@ state.settings.name=name.trim();
 const globalAppearance=getGlobalAppearance();
 state.settings.theme=globalAppearance.theme;
 state.settings.font=globalAppearance.font;
+state.view='dashboard';
 loading=false;
 localRevision=0;
 localDirty=false;
