@@ -123,8 +123,69 @@ async function addIncome(){
 
   save();
   render();
-}function addExpense(){let x={id:uid(),date:document.getElementById('edate').value,type:document.getElementById('etype').value,category:document.getElementById('ecat').value,amount:n(document.getElementById('eamt').value),description:document.getElementById('edesc').value};if(x.amount<=0)return alert('Ingresa un monto válido.');state.expenses.push(x);save();render()}function itemExpense(x){return `<div class="item"><div><b>${x.type==='business'?'🔴 Negocio':'🟠 Personal'} · ${esc(x.category)}</b><small>${x.date}${x.description?' · '+esc(x.description):''}</small></div><div class="redtxt"><b>−${money(x.amount)}</b><div class="actions"><button class="btn secondary small" onclick="editExpense('${x.id}')">✏️</button><button class="btn secondary small" onclick="deleteExpense('${x.id}')">🗑</button></div></div></div>`}
-function deleteSale(id){let i=state.sales.findIndex(x=>x.id===id),x=state.sales[i];state.sales.splice(i,1);save();undo('Venta eliminada',()=>state.sales.splice(i,0,x));render()}function deleteIncome(id){let i=state.income.findIndex(x=>x.id===id),x=state.income[i];state.income.splice(i,1);save();undo('Ingreso eliminado',()=>state.income.splice(i,0,x));render()}function deleteExpense(id){let i=state.expenses.findIndex(x=>x.id===id),x=state.expenses[i];state.expenses.splice(i,1);save();undo('Gasto eliminado',()=>state.expenses.splice(i,0,x));render()}function deleteNote(id){let i=state.notes.findIndex(x=>x.id===id),x=state.notes[i];state.notes.splice(i,1);save();undo('Nota eliminada',()=>state.notes.splice(i,0,x));render()}
+}async function addExpense(){
+  const date=document.getElementById('edate').value;
+  const type=document.getElementById('etype').value;
+  const category=document.getElementById('ecat').value;
+  const amount=Number(document.getElementById('eamt').value);
+  const description=document.getElementById('edesc').value.trim();
+
+  if(!date || !amount || amount<=0){
+    alert('Ingresa un monto válido.');
+    return;
+  }
+
+  const {data:userData,error:userError}=await sb.auth.getUser();
+
+  if(userError || !userData.user){
+    alert('La sesión no está disponible.');
+    return;
+  }
+
+  const {data:member,error:memberError}=await sb
+    .from('company_members')
+    .select('company_id')
+    .eq('user_id',userData.user.id)
+    .limit(1)
+    .single();
+
+  if(memberError){
+    alert('No se encontró la empresa del usuario.');
+    console.error(memberError);
+    return;
+  }
+
+  const {data,error}=await sb
+    .from('expenses')
+    .insert({
+      company_id:member.company_id,
+      date:date,
+      type:type,
+      category:category,
+      amount:amount,
+      description:description
+    })
+    .select()
+    .single();
+
+  if(error){
+    alert('Error al guardar el gasto: '+error.message);
+    console.error(error);
+    return;
+  }
+
+  state.expenses.push({
+    id:data.id,
+    date:data.date,
+    type:data.type,
+    category:data.category,
+    amount:Number(data.amount),
+    description:data.description || ''
+  });
+
+  save();
+  render();
+}function deleteSale(id){let i=state.sales.findIndex(x=>x.id===id),x=state.sales[i];state.sales.splice(i,1);save();undo('Venta eliminada',()=>state.sales.splice(i,0,x));render()}function deleteIncome(id){let i=state.income.findIndex(x=>x.id===id),x=state.income[i];state.income.splice(i,1);save();undo('Ingreso eliminado',()=>state.income.splice(i,0,x));render()}function deleteExpense(id){let i=state.expenses.findIndex(x=>x.id===id),x=state.expenses[i];state.expenses.splice(i,1);save();undo('Gasto eliminado',()=>state.expenses.splice(i,0,x));render()}function deleteNote(id){let i=state.notes.findIndex(x=>x.id===id),x=state.notes[i];state.notes.splice(i,1);save();undo('Nota eliminada',()=>state.notes.splice(i,0,x));render()}
 function editSale(id){let x=state.sales.find(x=>x.id===id),q=prompt('Cantidad',x.qty),p=prompt('Precio',x.price),d=prompt('Producto',x.product);if(q!==null&&p!==null){x.qty=n(q);x.price=n(p);if(d!==null)x.product=d;save();render()}}function editIncome(id){let x=state.income.find(x=>x.id===id),a=prompt('Monto recibido',x.amount),d=prompt('Concepto',x.description);if(a!==null){x.amount=n(a);if(d!==null)x.description=d;save();render()}}function editExpense(id){let x=state.expenses.find(x=>x.id===id),a=prompt('Monto',x.amount),d=prompt('Descripción',x.description||'');if(a!==null){x.amount=n(a);if(d!==null)x.description=d;save();render()}}
 function addNote(){let t=document.getElementById('noteText').value.trim();if(!t)return;state.notes.unshift({id:uid(),text:t,date:today()});save();render()}
 function esc(s){return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
