@@ -808,14 +808,40 @@ const CATS=[
 
 const OLD_KEY='gemelitas_pro_v1';
 
+const GLOBAL_APPEARANCE_KEY='gemelitas_global_appearance';
+
+function getGlobalAppearance(){
+try{
+const raw=JSON.parse(localStorage.getItem(GLOBAL_APPEARANCE_KEY)||'null');
+return {
+theme:raw?.theme||'dark',
+font:n(raw?.font)||16
+};
+}catch(e){
+return {theme:'dark',font:16};
+}
+}
+
+function saveGlobalAppearance(){
+try{
+localStorage.setItem(
+GLOBAL_APPEARANCE_KEY,
+JSON.stringify({
+theme:state.settings.theme||'dark',
+font:n(state.settings.font)||16
+})
+);
+}catch(e){}
+}
+
 const DEFAULT={
 view:'dashboard',
 period:'semana',
 settings:{
 name:'GEMELITAS A&A S.A.C.',
 cash:0,
-theme:'dark',
-font:16
+theme:getGlobalAppearance().theme,
+font:getGlobalAppearance().font
 },
 weeks:[],
 sales:[],
@@ -825,6 +851,9 @@ notes:[]
 };
 
 let state=structuredClone(DEFAULT);
+const initialAppearance=getGlobalAppearance();
+document.body.dataset.theme=initialAppearance.theme;
+document.documentElement.style.setProperty('--fs',initialAppearance.font+'px');
 
 let companies=[];
 
@@ -904,6 +933,10 @@ esc(text);
 
 function saveLocal(){
 
+const appearance=getGlobalAppearance();
+state.settings.theme=appearance.theme;
+state.settings.font=appearance.font;
+
 localStorage.setItem(
 'gemelitas_cache_'+
 (currentCompanyId||'none'),
@@ -911,11 +944,11 @@ JSON.stringify(state)
 );
 
 document.body.dataset.theme=
-state.settings.theme;
+appearance.theme;
 
 document.documentElement.style.setProperty(
 '--fs',
-state.settings.font+'px'
+appearance.font+'px'
 );
 
 document.getElementById('brandName').textContent=
@@ -2380,6 +2413,8 @@ Modo y color
 <select
 onchange="
 state.settings.theme=this.value;
+saveGlobalAppearance();
+document.body.dataset.theme=state.settings.theme;
 queueSync();
 render();
 ">
@@ -2423,6 +2458,8 @@ Escala
 <select
 onchange="
 state.settings.font=n(this.value);
+saveGlobalAppearance();
+document.documentElement.style.setProperty('--fs',state.settings.font+'px');
 queueSync();
 render();
 ">
@@ -3507,6 +3544,10 @@ settings:{
 }
 };
 
+const globalAppearance=getGlobalAppearance();
+state.settings.theme=globalAppearance.theme;
+state.settings.font=globalAppearance.font;
+
 }else{
 
 /*
@@ -3820,6 +3861,9 @@ companies.push({id,name:name.trim()});
 currentCompanyId=id;
 state=structuredClone(DEFAULT);
 state.settings.name=name.trim();
+const globalAppearance=getGlobalAppearance();
+state.settings.theme=globalAppearance.theme;
+state.settings.font=globalAppearance.font;
 loading=false;
 localRevision=0;
 localDirty=false;
