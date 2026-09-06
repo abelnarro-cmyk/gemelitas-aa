@@ -124,47 +124,7 @@ async function addIncome(){
   save();
   render();
 }
-
-  const {data:member,error:memberError}=await sb
-    .from('company_members')
-    .select('company_id')
-    .eq('user_id',userData.user.id)
-    .limit(1)
-    .single();
-
-  if(memberError){
-    alert('No se encontró la empresa del usuario.');
-    console.error(memberError);
-    return;
-  }
-
-  const {data,error}=await sb
-    .from('income')
-    .insert({
-      company_id:member.company_id,
-      date:date,
-      description:description,
-      amount:amount
-    })
-    .select()
-    .single();
-
-  if(error){
-    alert('Error al guardar el ingreso: '+error.message);
-    console.error(error);
-    return;
-  }
-
-  state.income.push({
-    id:data.id,
-    date:data.date,
-    description:data.description,
-    amount:Number(data.amount)
-  });
-
-  save();
-  render();
-}async function addExpense(){
+async function addExpense(){
   const date=document.getElementById('edate').value;
   const type=document.getElementById('etype').value;
   const category=document.getElementById('ecat').value;
