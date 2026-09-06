@@ -643,6 +643,10 @@ let localRevision=0;
 
 let localDirty=false;
 
+let globalMetrics=[];
+
+let globalLoading=false;
+
 const uid=()=>{
 if(crypto.randomUUID)
 return crypto.randomUUID();
@@ -881,6 +885,7 @@ return a;
 function nav(){
 
 const items=[
+['global','🌐 General'],
 ['dashboard','🏠 Inicio'],
 ['week','📅 Semana'],
 ['income','💵 Ingresos'],
@@ -900,6 +905,180 @@ ${l}
 </button>
 `
 ).join('');
+
+}
+
+async function refreshGlobalMetrics(){
+
+if(!currentUser)
+return;
+
+globalLoading=true;
+
+globalMetrics=[];
+
+try{
+
+const ids=await getMemberships();
+
+for(const id of ids){
+
+const c=companies.find(x=>x.id===id);
+
+const {data,error}=await sb
+.from('company_app_data')
+.select('data,updated_at')
+.eq('company_id',id)
+.maybeSingle();
+
+if(error)
+throw error;
+
+const d=data?.data||null;
+
+if(!d){
+
+globalMetrics.push({
+id,
+name:c?.name||'Empresa',
+sales:0,income:0,expenses:0,personal:0,profit:0,cash:0
+});
+continue;
+}
+
+const weeks=Array.isArray(d.weeks)?d.weeks:[];
+const sales=Array.isArray(d.sales)?d.sales:[];
+const income=Array.isArray(d.income)?d.income:[];
+const expenses=Array.isArray(d.expenses)?d.expenses:[];
+
+const salesTotalLocal=w=>
+DAYS.reduce((sum,day)=>sum+n(w.days?.[day])*n(w.price),0)+
+sales.filter(x=>weekForDate(x.date)===w.start).reduce((sum,x)=>sum+n(x.qty)*n(x.price),0);
+
+const totalSales=weeks.reduce((sum,w)=>sum+salesTotalLocal(w),0);
+const totalIncome=income.reduce((sum,x)=>sum+n(x.amount),0);
+const businessExpenses=expenses.filter(x=>x.type==='business').reduce((sum,x)=>sum+n(x.amount),0);
+const personalExpenses=expenses.filter(x=>x.type==='personal').reduce((sum,x)=>sum+n(x.amount),0);
+const totalExpenses=expenses.reduce((sum,x)=>sum+n(x.amount),0);
+const cash=n(d.settings?.cash)+totalIncome-totalExpenses;
+
+const name=d.settings?.name||c?.name||'Empresa';
+
+globalMetrics.push({
+id,name,
+sales:totalSales,
+income:totalIncome,
+expenses:businessExpenses,
+personal:personalExpenses,
+profit:totalSales-businessExpenses,
+cash
+});
+
+}
+
+setStatus('Sincronizado');
+
+}catch(e){
+
+console.error(e);
+setStatus('No se pudo cargar el resumen general',false);
+
+}finally{
+
+globalLoading=false;
+
+if(state.view==='global')
+render();
+
+}
+
+}
+
+function globalDashboard(){
+
+if(globalLoading){
+return `
+<div class="card hero">
+<div class="section" style="margin:0">
+<div>
+<div class="pill">VISIÓN GENERAL</div>
+<h2 style="font-size:1.5rem;margin-top:10px">Resumen general del negocio 🌐</h2>
+<p class="sub">Cargando información de todas las empresas…</p>
+</div>
+</div>
+</div>`;
+}
+
+const totalSales=globalMetrics.reduce((s,x)=>s+x.sales,0);
+const totalIncome=globalMetrics.reduce((s,x)=>s+x.income,0);
+const totalExpenses=globalMetrics.reduce((s,x)=>s+x.expenses,0);
+const totalPersonal=globalMetrics.reduce((s,x)=>s+x.personal,0);
+const totalProfit=globalMetrics.reduce((s,x)=>s+x.profit,0);
+const totalCash=globalMetrics.reduce((s,x)=>s+x.cash,0);
+const count=globalMetrics.length;
+
+const rows=globalMetrics.slice().sort((a,b)=>b.sales-a.sales).map(x=>`
+<tr>
+<td><b>${esc(x.name)}</b></td>
+<td>${money(x.sales)}</td>
+<td>${money(x.income)}</td>
+<td>${money(x.expenses)}</td>
+<td class="green">${money(x.profit)}</td>
+<td>${money(x.cash)}</td>
+<td><button class="btn secondary small" onclick="openCompanyFromGlobal('${x.id}')">Ver empresa</button></td>
+</tr>`).join('');
+
+return `
+<div class="card hero">
+<div class="section" style="margin:0">
+<div>
+<div class="pill">VISIÓN GENERAL</div>
+<h2 style="font-size:1.5rem;margin-top:10px">Resumen general del negocio 🌐</h2>
+<p class="sub">Una sola vista para supervisar todas las empresas administradas.</p>
+</div>
+<div class="row">
+<button class="btn secondary small" onclick="refreshGlobalMetrics()">↻ Actualizar</button>
+</div>
+</div>
+</div>
+
+<div class="grid kpis" style="margin-top:13px">
+<div class="card kpi"><label>Empresas</label><strong>${count}</strong><small>Empresas disponibles</small></div>
+<div class="card kpi"><label>Ventas totales</label><strong class="green">${money(totalSales)}</strong><small>Todas las empresas</small></div>
+<div class="card kpi"><label>Ingresos recibidos</label><strong class="blue">${money(totalIncome)}</strong><small>Dinero registrado</small></div>
+<div class="card kpi"><label>Gastos negocio</label><strong class="redtxt">${money(totalExpenses)}</strong><small>Operación de las empresas</small></div>
+<div class="card kpi"><label>Utilidad estimada</label><strong class="green">${money(totalProfit)}</strong><small>Ventas − gastos negocio</small></div>
+<div class="card kpi"><label>Caja estimada</label><strong>${money(totalCash)}</strong><small>Consolidado</small></div>
+</div>
+
+<div class="card" style="margin-top:13px">
+<div class="section">
+<div><h2>🏢 Empresas</h2><p class="sub">Comparación rápida de resultados por empresa.</p></div>
+</div>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Empresa</th><th>Ventas</th><th>Ingresos</th><th>Gastos</th><th>Utilidad</th><th>Caja</th><th></th></tr></thead>
+<tbody>${rows||'<tr><td colspan="7">No hay empresas disponibles.</td></tr>'}</tbody>
+</table>
+</div>
+</div>
+
+<div class="card" style="margin-top:13px">
+<div class="notice">👨‍👩‍👧 Gastos personales registrados en conjunto: <b>${money(totalPersonal)}</b>. Se mantienen separados de la utilidad del negocio.</div>
+</div>
+`;
+
+}
+
+async function openCompanyFromGlobal(id){
+
+await loadCompany(id);
+
+state.view='dashboard';
+
+localStorage.setItem('gemelitas_active_company',currentCompanyId);
+
+render();
 
 }
 
@@ -2150,7 +2329,9 @@ nav();
 let v=state.view;
 
 document.getElementById('main').innerHTML=
-v==='dashboard'
+v==='global'
+?globalDashboard()
+:v==='dashboard'
 ?dashboard()
 :v==='week'
 ?weekView()
@@ -2169,6 +2350,9 @@ setTimeout(
 drawCharts,
 30
 );
+
+if(v==='global'&&!globalLoading&&(!globalMetrics.length||globalMetrics.length!==companies.length))
+refreshGlobalMetrics();
 
 }
 
