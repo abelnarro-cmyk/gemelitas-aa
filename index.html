@@ -68,9 +68,9 @@ function render(){save();document.getElementById('nav').innerHTML=nav();let v=st
 function wedit(k,v){selectedWeek()[k]=k==='price'?n(v):v;save();render()}function dayedit(d,v){selectedWeek().days[d]=n(v);save();render()}function newWeek(){let d=new Date(selectedWeek().start+'T12:00:00');d.setDate(d.getDate()+7);state.currentWeek=weekForDate(d.toISOString().slice(0,10));ensureWeek(state.currentWeek);render()}
 function addSale(){let x={id:uid(),date:document.getElementById('sdate').value,product:document.getElementById('sprod').value||'Venta adicional',qty:n(document.getElementById('sqty').value),price:n(document.getElementById('sprice').value)};if(x.qty<=0||x.price<=0)return alert('Ingresa cantidad y precio válidos.');state.sales.push(x);save();render()}function listSales(w){let a=state.sales.filter(x=>weekForDate(x.date)===w.start);return a.length?a.map(x=>`<div class="item"><div><b>${esc(x.product)}</b><small>${x.date} · ${x.qty} × ${money(x.price)}</small></div><div><b>${money(x.qty*x.price)}</b><div class="actions"><button class="btn secondary small" onclick="editSale('${x.id}')">✏️</button><button class="btn secondary small" onclick="deleteSale('${x.id}')">🗑</button></div></div></div>`).join(''):'<div class="empty">Sin ventas adicionales.</div>'}
 async function addIncome(){
-  const date=document.getElementById('incomeDate').value;
-  const description=document.getElementById('incomeDesc').value.trim();
-  const amount=Number(document.getElementById('incomeAmount').value);
+  const date=document.getElementById('idate').value;
+  const description=document.getElementById('idesc').value.trim();
+  const amount=Number(document.getElementById('iamt').value);
 
   if(!date || !description || !amount || amount<=0){
     alert('Completa todos los datos correctamente.');
@@ -83,6 +83,47 @@ async function addIncome(){
     alert('La sesión no está disponible.');
     return;
   }
+
+  const {data:member,error:memberError}=await sb
+    .from('company_members')
+    .select('company_id')
+    .eq('user_id',userData.user.id)
+    .limit(1)
+    .single();
+
+  if(memberError){
+    alert('No se encontró la empresa del usuario.');
+    console.error(memberError);
+    return;
+  }
+
+  const {data,error}=await sb
+    .from('income')
+    .insert({
+      company_id:member.company_id,
+      date:date,
+      description:description,
+      amount:amount
+    })
+    .select()
+    .single();
+
+  if(error){
+    alert('Error al guardar el ingreso: '+error.message);
+    console.error(error);
+    return;
+  }
+
+  state.income.push({
+    id:data.id,
+    date:data.date,
+    description:data.description || '',
+    amount:Number(data.amount)
+  });
+
+  save();
+  render();
+}
 
   const {data:member,error:memberError}=await sb
     .from('company_members')
