@@ -3939,6 +3939,8 @@ ids.includes(cached)
 ?cached
 :ids[0];
 
+state.view='global';
+
 await loadCompany(
 currentCompanyId
 );
@@ -4013,6 +4015,8 @@ document.getElementById(
 try{
 
 await initCompanies();
+state.view='global';
+render();
 
 }catch(e){
 
@@ -4056,6 +4060,8 @@ document.getElementById(
 try{
 
 await initCompanies();
+state.view='global';
+render();
 
 }catch(e){
 
@@ -4116,6 +4122,8 @@ currentUser=null;
 currentCompanyId=null;
 
 companies=[];
+localStorage.removeItem('gemelitas_active_company');
+globalMetrics=[];
 
 document.getElementById(
 'app'
