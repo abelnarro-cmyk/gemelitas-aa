@@ -644,6 +644,14 @@ let saveTimer=null;
 
 let loading=false;
 
+let persistChain=Promise.resolve();
+
+let realtimeChannel=null;
+
+let localRevision=0;
+
+let localDirty=false;
+
 
 const uid=()=>{
 if(crypto.randomUUID)
@@ -2311,19 +2319,20 @@ const x={
 id:uid(),
 date:document.getElementById('sdate').value,
 product:
-document.getElementById('sprod').value||
+document.getElementById('sprod').value.trim()||
 'Venta adicional',
 qty:n(document.getElementById('sqty').value),
 price:n(document.getElementById('sprice').value)
 };
 
 if(
+!x.date||
 x.qty<=0||
 x.price<=0
 ){
 
 alert(
-'Ingresa cantidad y precio válidos.'
+'Ingresa fecha, cantidad y precio válidos.'
 );
 
 return;
@@ -2486,8 +2495,19 @@ queueSync();
 undo(
 label,
 ()=>{
-arr.splice(i,0,x);
+if(
+!arr.some(
+y=>String(y.id)===String(x.id)
+)
+){
+arr.splice(
+Math.min(i,arr.length),
+0,
+x
+);
+}
 queueSync();
+render();
 }
 );
 
@@ -2566,6 +2586,8 @@ function doUndo(){
 if(undoData)
 undoData();
 
+undoData=null;
+
 document.getElementById('undo')
 .classList.remove('show');
 
@@ -2581,11 +2603,29 @@ x=>String(x.id)===String(id)
 
 if(!x)return;
 
+let date=
+prompt(
+'Fecha (AAAA-MM-DD)',
+x.date||today()
+);
+
+if(date===null)return;
+
+let product=
+prompt(
+'Producto',
+x.product||'Venta adicional'
+);
+
+if(product===null)return;
+
 let q=
 prompt(
 'Cantidad',
 x.qty
 );
+
+if(q===null)return;
 
 let p=
 prompt(
@@ -2593,29 +2633,27 @@ prompt(
 x.price
 );
 
-let d=
-prompt(
-'Producto',
-x.product
-);
+if(p===null)return;
 
-if(
-q!==null&&
-p!==null
-){
+q=n(q);
+p=n(p);
 
-x.qty=n(q);
+if(!date||q<=0||p<=0){
 
-x.price=n(p);
+alert('Los datos de la venta no son válidos.');
 
-if(d!==null)
-x.product=d;
+return;
+
+}
+
+x.date=date;
+x.product=product.trim()||'Venta adicional';
+x.qty=q;
+x.price=p;
 
 queueSync();
 
 render();
-
-}
 
 }
 
@@ -2629,30 +2667,79 @@ x=>String(x.id)===String(id)
 
 if(!x)return;
 
+let date=
+prompt(
+'Fecha (AAAA-MM-DD)',
+x.date||today()
+);
+
+if(date===null)return;
+
+let d=
+prompt(
+'Concepto',
+x.description||''
+);
+
+if(d===null)return;
+
 let a=
 prompt(
 'Monto recibido',
 x.amount
 );
 
-let d=
+if(a===null)return;
+
+let weekId=
 prompt(
-'Concepto',
-x.description
+'ID de semana (déjalo igual si no quieres cambiarla)',
+x.weekId||''
 );
 
-if(a!==null){
+if(weekId===null)return;
 
-x.amount=n(a);
+a=n(a);
 
-if(d!==null)
-x.description=d;
+if(!date||!d.trim()||a<=0){
+
+alert('Los datos del ingreso no son válidos.');
+
+return;
+
+}
+
+x.date=date;
+x.description=d.trim();
+x.amount=a;
+
+if(weekId.trim()){
+
+const found=
+state.weeks.find(
+w=>String(w.id)===String(weekId.trim())
+);
+
+if(found)
+x.weekId=found.id;
+else
+x.weekId=
+state.weeks.find(
+w=>weekForDate(date)===w.start
+)?.id||null;
+
+}else{
+
+x.weekId=
+state.weeks.find(
+w=>weekForDate(date)===w.start
+)?.id||null;
+
+}
 
 queueSync();
 
 render();
-
-}
 
 }
 
@@ -2666,11 +2753,47 @@ x=>String(x.id)===String(id)
 
 if(!x)return;
 
+let date=
+prompt(
+'Fecha (AAAA-MM-DD)',
+x.date||today()
+);
+
+if(date===null)return;
+
+let type=
+prompt(
+'Tipo: business = Negocio / personal = Personal',
+x.type||'business'
+);
+
+if(type===null)return;
+
+type=type.trim().toLowerCase();
+
+if(type!=='business'&&type!=='personal'){
+
+alert('El tipo debe ser business o personal.');
+
+return;
+
+}
+
+let category=
+prompt(
+'Categoría',
+x.category||'Otros'
+);
+
+if(category===null)return;
+
 let a=
 prompt(
 'Monto',
 x.amount
 );
+
+if(a===null)return;
 
 let d=
 prompt(
@@ -2678,18 +2801,27 @@ prompt(
 x.description||''
 );
 
-if(a!==null){
+if(d===null)return;
 
-x.amount=n(a);
+a=n(a);
 
-if(d!==null)
-x.description=d;
+if(!date||a<=0){
+
+alert('Los datos del gasto no son válidos.');
+
+return;
+
+}
+
+x.date=date;
+x.type=type;
+x.category=category.trim()||'Otros';
+x.amount=a;
+x.description=d.trim();
 
 queueSync();
 
 render();
-
-}
 
 }
 
@@ -2852,6 +2984,10 @@ position:'bottom'
 
 function queueSync(){
 
+localRevision++;
+
+localDirty=true;
+
 saveLocal();
 
 clearTimeout(saveTimer);
@@ -2970,18 +3106,49 @@ setStatus(
 'Cargando empresa…'
 );
 
+if(realtimeChannel){
+
+try{
+await sb.removeChannel(realtimeChannel);
+}catch(e){
+console.warn(e);
+}
+
+realtimeChannel=null;
+
+}
 
 const cached=
 localStorage.getItem(
 'gemelitas_cache_'+id
 );
 
+let localState=
+structuredClone(DEFAULT);
 
-state=
-cached
-?JSON.parse(cached)
-:structuredClone(DEFAULT);
+try{
 
+if(cached)
+localState={
+...structuredClone(DEFAULT),
+...JSON.parse(cached)
+};
+
+}catch(e){
+
+console.warn('Caché local inválida',e);
+
+}
+
+state=localState;
+
+localRevision=0;
+
+localDirty=false;
+
+let serverData=null;
+
+try{
 
 const {
 data,
@@ -2998,23 +3165,52 @@ id
 )
 .maybeSingle();
 
-
 if(error)
 throw error;
 
+serverData=data;
 
-if(data?.data){
+}catch(error){
+
+console.error(error);
+
+setStatus(
+'Sin conexión · usando datos locales',
+false
+);
+
+ensureWeek();
+
+loading=false;
+
+render();
+
+updateCompanySelect();
+
+return;
+
+}
+
+if(serverData?.data){
 
 state={
 ...structuredClone(DEFAULT),
-...data.data,
+...serverData.data,
 settings:{
 ...DEFAULT.settings,
-...(data.data.settings||{})
+...(serverData.data.settings||{})
 }
 };
 
 }else{
+
+/*
+Si por alguna razón la empresa todavía no tiene
+un registro central, recuperamos únicamente el
+estado local antiguo como migración inicial.
+Después de esto, company_app_data es la fuente
+única de verdad.
+*/
 
 mergeLegacy(
 localOldState()
@@ -3022,112 +3218,17 @@ localOldState()
 
 }
 
-
-/*
-Importamos los ingresos y gastos
-que ya existen en las tablas actuales.
-
-Así no se pierden los registros
-que ya tenías.
-*/
-
-const [
-er,
-ir
-]=
-await Promise.all([
-
-sb
-.from('expenses')
-.select(
-'id,date,type,category,amount,description'
-)
-.eq(
-'company_id',
-id
-),
-
-sb
-.from('income')
-.select(
-'id,date,description,amount'
-)
-.eq(
-'company_id',
-id
-)
-
-]);
-
-
-if(!er.error){
-
-for(
-const x of
-(er.data||[])
-){
-
-if(
-!state.expenses.some(
-y=>String(y.id)===String(x.id)
-)
-){
-
-state.expenses.push({
-
-...x,
-
-amount:n(x.amount)
-
-});
-
-}
-
-}
-
-}
-
-
-if(!ir.error){
-
-for(
-const x of
-(ir.data||[])
-){
-
-if(
-!state.income.some(
-y=>String(y.id)===String(x.id)
-)
-){
-
-state.income.push({
-
-...x,
-
-amount:n(x.amount),
-
-weekId:
-state.weeks.find(
-w=>
-weekForDate(x.date)===
-w.start
-)?.id||null
-
-});
-
-}
-
-}
-
-}
-
-
 ensureWeek();
 
 saveLocal();
 
 loading=false;
+
+if(!serverData?.data){
+
+await persist();
+
+}else{
 
 render();
 
@@ -3135,7 +3236,96 @@ setStatus(
 'Sincronizado'
 );
 
+}
+
 updateCompanySelect();
+
+/*
+Sincronización en tiempo real entre dispositivos.
+Si otro teléfono, laptop o PC cambia la empresa,
+el cambio se refleja sin volver a iniciar sesión.
+*/
+
+try{
+
+realtimeChannel=
+sb
+.channel(
+'company_app_data_'+id
+)
+.on(
+'postgres_changes',
+{
+event:'*',
+schema:'public',
+table:'company_app_data',
+filter:'company_id=eq.'+id
+},
+payload=>{
+
+const incoming=
+payload?.new?.data;
+
+if(
+!incoming||
+payload?.new?.company_id!==currentCompanyId
+)
+return;
+
+if(localDirty)
+return;
+
+const incomingTime=
+Date.parse(
+incoming.updatedAt||payload?.new?.updated_at||''
+);
+
+const localTime=
+Date.parse(
+state.updatedAt||''
+);
+
+if(
+Number.isFinite(incomingTime)&&
+Number.isFinite(localTime)&&
+incomingTime<=localTime
+)
+return;
+
+state={
+...structuredClone(DEFAULT),
+...incoming,
+settings:{
+...DEFAULT.settings,
+...(incoming.settings||{})
+}
+};
+
+saveLocal();
+
+render();
+
+setStatus(
+'Sincronizado'
+);
+
+}
+)
+.subscribe(
+status=>{
+if(status==='SUBSCRIBED')
+setStatus('Sincronizado');
+}
+);
+
+}catch(e){
+
+console.warn(
+'No se pudo activar la sincronización en tiempo real.',
+e
+);
+
+}
 
 }
 
@@ -3148,27 +3338,49 @@ loading
 )
 return false;
 
+const companyId=currentCompanyId;
+
+const revision=localRevision;
+
+const timestamp=
+new Date().toISOString();
+
+state.updatedAt=timestamp;
 
 saveLocal();
+
+const snapshot={
+...structuredClone(state),
+updatedAt:timestamp
+};
+
+const payload={
+company_id:companyId,
+data:snapshot
+};
+
+/*
+Las escrituras se ponen en fila. Así, si haces
+varios cambios seguidos, nunca una escritura
+antigua pisa a una más nueva.
+*/
+
+persistChain=
+persistChain
+.catch(
+()=>false
+)
+.then(
+async()=>{
+
+if(
+companyId!==currentCompanyId
+)
+return false;
 
 setStatus(
 'Guardando…'
 );
-
-
-const payload={
-
-company_id:
-currentCompanyId,
-
-data:{
-...state,
-updatedAt:
-new Date().toISOString()
-}
-
-};
-
 
 const {
 error
@@ -3181,7 +3393,6 @@ payload,
 onConflict:'company_id'
 }
 );
-
 
 if(error){
 
@@ -3196,12 +3407,21 @@ return false;
 
 }
 
-
 setStatus(
 'Sincronizado'
 );
 
+if(
+localRevision===revision
+)
+localDirty=false;
+
 return true;
+
+}
+);
+
+return persistChain;
 
 }
 
@@ -3227,7 +3447,6 @@ console.error(e);
 }
 
 }
-
 
 function updateCompanySelect(){
 
@@ -3350,10 +3569,42 @@ structuredClone(DEFAULT);
 state.settings.name=
 name.trim();
 
-
 loading=false;
 
-await persist();
+try{
+
+const {
+error
+}=
+await sb
+.from('company_app_data')
+.upsert(
+{
+company_id:id,
+data:{
+...structuredClone(state),
+updatedAt:new Date().toISOString()
+}
+},
+{
+onConflict:'company_id'
+}
+);
+
+if(error)
+throw error;
+
+}catch(e){
+
+console.error(e);
+
+alert(
+'La empresa se creó, pero no se pudo guardar su información inicial.'
+);
+
+return;
+
+}
 
 updateCompanySelect();
 
@@ -3579,6 +3830,30 @@ if(
 )
 return;
 
+clearTimeout(saveTimer);
+
+try{
+
+if(currentCompanyId)
+await persist();
+
+}catch(e){
+
+console.error(e);
+
+}
+
+if(realtimeChannel){
+
+try{
+await sb.removeChannel(realtimeChannel);
+}catch(e){
+console.warn(e);
+}
+
+realtimeChannel=null;
+
+}
 
 await sb.auth.signOut();
 
@@ -3761,6 +4036,13 @@ false
 
 window.addEventListener(
 'beforeunload',
+()=>{
+saveLocal();
+}
+);
+
+window.addEventListener(
+'pagehide',
 ()=>{
 saveLocal();
 }
