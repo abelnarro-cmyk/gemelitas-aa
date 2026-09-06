@@ -496,7 +496,6 @@ Iniciar sesión
 </div>
 </div>
 
-
 <div class="app" id="app" style="display:none">
 
 <div class="top">
@@ -538,7 +537,6 @@ Preparando…
 
 </div>
 
-
 <div class="companyBar">
 
 <b>Empresa:</b>
@@ -556,16 +554,13 @@ onclick="createCompany()">
 
 </div>
 
-
 <div class="nav" id="nav"></div>
 
 <main id="main"></main>
 
 </div>
 
-
 <div class="undo" id="undo"></div>
-
 
 <script>
 
@@ -580,7 +575,6 @@ window.supabase.createClient(
 SUPABASE_URL,
 SUPABASE_KEY
 );
-
 
 const DAYS=[
 'Lunes',
@@ -607,9 +601,7 @@ const CATS=[
 'Otros'
 ];
 
-
 const OLD_KEY='gemelitas_pro_v1';
-
 
 const DEFAULT={
 view:'dashboard',
@@ -626,7 +618,6 @@ expenses:[],
 income:[],
 notes:[]
 };
-
 
 let state=structuredClone(DEFAULT);
 
@@ -652,7 +643,6 @@ let localRevision=0;
 
 let localDirty=false;
 
-
 const uid=()=>{
 if(crypto.randomUUID)
 return crypto.randomUUID();
@@ -661,9 +651,7 @@ return Date.now().toString(36)+
 Math.random().toString(36).slice(2);
 };
 
-
 const n=x=>Number(x)||0;
-
 
 const money=x=>
 'S/ '+n(x).toLocaleString(
@@ -674,10 +662,8 @@ maximumFractionDigits:2
 }
 );
 
-
 const today=()=>
 new Date().toISOString().slice(0,10);
-
 
 const esc=s=>
 String(s??'').replace(
@@ -690,7 +676,6 @@ c=>({
 '"':'&quot;'
 }[c])
 );
-
 
 function setStatus(text,good=true){
 
@@ -705,7 +690,6 @@ e.innerHTML=
 esc(text);
 
 }
-
 
 function saveLocal(){
 
@@ -728,7 +712,6 @@ state.settings.name||'Empresa';
 
 }
 
-
 function weekForDate(d){
 
 const x=new Date(d+'T12:00:00');
@@ -742,7 +725,6 @@ x.setDate(x.getDate()+diff);
 return x.toISOString().slice(0,10);
 
 }
-
 
 function ensureWeek(
 start=weekForDate(today())
@@ -775,7 +757,6 @@ return w;
 
 }
 
-
 function selectedWeek(){
 
 return ensureWeek(
@@ -784,7 +765,6 @@ weekForDate(today())
 );
 
 }
-
 
 function weekTotal(w){
 
@@ -797,7 +777,6 @@ n(w.price),
 );
 
 }
-
 
 function extrasForWeek(w){
 
@@ -812,7 +791,6 @@ s+n(x.qty)*n(x.price),
 );
 
 }
-
 
 function expensesForWeek(
 w,
@@ -832,7 +810,6 @@ x.type===type
 
 }
 
-
 function incomeForWeek(w){
 
 return state.income
@@ -848,14 +825,12 @@ weekForDate(x.date)===w.start
 
 }
 
-
 function salesTotal(w){
 
 return weekTotal(w)+
 extrasForWeek(w);
 
 }
-
 
 function pendingWeek(w){
 
@@ -866,7 +841,6 @@ incomeForWeek(w)
 );
 
 }
-
 
 function rangeWeeks(){
 
@@ -904,7 +878,6 @@ return a;
 
 }
 
-
 function nav(){
 
 const items=[
@@ -929,7 +902,6 @@ ${l}
 ).join('');
 
 }
-
 
 function dashboard(){
 
@@ -979,7 +951,6 @@ state.expenses.reduce(
 0
 );
 
-
 return `
 
 <div class="card hero">
@@ -1028,7 +999,6 @@ ${p==='anio'
 
 </div>
 
-
 <div class="grid kpis" style="margin-top:13px">
 
 <div class="card kpi">
@@ -1045,7 +1015,6 @@ Menús + ventas adicionales
 
 </div>
 
-
 <div class="card kpi">
 
 <label>Ingresos recibidos</label>
@@ -1059,7 +1028,6 @@ Dinero realmente registrado
 </small>
 
 </div>
-
 
 <div class="card kpi">
 
@@ -1075,7 +1043,6 @@ Referencia automática
 
 </div>
 
-
 <div class="card kpi">
 
 <label>Gastos negocio</label>
@@ -1090,7 +1057,6 @@ Operación real
 
 </div>
 
-
 <div class="card kpi">
 
 <label>Utilidad estimada</label>
@@ -1104,7 +1070,6 @@ Ventas − gastos negocio
 </small>
 
 </div>
-
 
 <div class="card kpi">
 
@@ -1121,7 +1086,6 @@ Caja estimada
 </div>
 
 </div>
-
 
 <div class="grid two" style="margin-top:13px">
 
@@ -1145,7 +1109,6 @@ Visión ejecutiva
 
 </div>
 
-
 <div class="card">
 
 <div class="section">
@@ -1164,7 +1127,6 @@ Visión ejecutiva
 
 </div>
 
-
 <div class="card" style="margin-top:13px">
 
 <div class="notice">
@@ -1182,7 +1144,6 @@ la rentabilidad real del negocio.
 `;
 
 }
-
 
 function weekView(){
 
@@ -1217,7 +1178,6 @@ onclick="newWeek()">
 
 </div>
 
-
 <div class="card">
 
 <div class="form">
@@ -1235,7 +1195,6 @@ onchange="wedit('label',this.value)"
 
 </div>
 
-
 <div class="field">
 
 <label>
@@ -1252,7 +1211,6 @@ onchange="wedit('price',this.value)"
 </div>
 
 </div>
-
 
 <div class="tablewrap">
 
@@ -1302,7 +1260,6 @@ ${money(n(w.days?.[d])*n(w.price))}
 
 </div>
 
-
 <div class="section">
 
 <h2>
@@ -1327,7 +1284,6 @@ menús
 
 </div>
 
-
 <div class="notice">
 
 Este total sirve como referencia
@@ -1340,7 +1296,6 @@ en <b>Ingresos</b>.
 </div>
 
 </div>
-
 
 <div class="card">
 
@@ -1357,7 +1312,6 @@ Total:
 
 </div>
 
-
 <div class="form">
 
 <div class="field">
@@ -1372,7 +1326,6 @@ value="${today()}"
 
 </div>
 
-
 <div class="field">
 
 <label>Producto</label>
@@ -1383,7 +1336,6 @@ placeholder="Menú, gaseosa..."
 >
 
 </div>
-
 
 <div class="field">
 
@@ -1396,7 +1348,6 @@ value="1"
 >
 
 </div>
-
 
 <div class="field">
 
@@ -1411,7 +1362,6 @@ placeholder="0.00"
 
 </div>
 
-
 <button
 class="btn"
 onclick="addSale()">
@@ -1420,7 +1370,6 @@ Agregar
 
 </div>
 
-
 ${listSales(w)}
 
 </div>
@@ -1428,7 +1377,6 @@ ${listSales(w)}
 `;
 
 }
-
 
 function listSales(w){
 
@@ -1489,7 +1437,6 @@ onclick="deleteSale('${x.id}')">
 
 }
 
-
 function incomeView(){
 
 const w=selectedWeek();
@@ -1515,7 +1462,6 @@ Total ${money(incomeForWeek(w))}
 
 </div>
 
-
 <div class="card">
 
 <div class="notice">
@@ -1527,7 +1473,6 @@ Ejemplo:
 <b>Empresa pagó S/ 3,000</b>.
 
 </div>
-
 
 <div
 class="form"
@@ -1545,7 +1490,6 @@ value="${today()}"
 
 </div>
 
-
 <div class="field">
 
 <label>Concepto</label>
@@ -1556,7 +1500,6 @@ placeholder="Empresa - pago semana"
 >
 
 </div>
-
 
 <div class="field">
 
@@ -1569,7 +1512,6 @@ step=".01"
 >
 
 </div>
-
 
 <div class="field">
 
@@ -1593,7 +1535,6 @@ ${esc(x.label)}
 
 </div>
 
-
 <button
 class="btn"
 onclick="addIncome()">
@@ -1603,7 +1544,6 @@ Registrar ingreso
 </div>
 
 </div>
-
 
 <div class="card">
 
@@ -1622,7 +1562,6 @@ x=>itemIncome(x)
 `;
 
 }
-
 
 function itemIncome(x){
 
@@ -1672,7 +1611,6 @@ onclick="deleteIncome('${x.id}')">
 
 }
 
-
 function expensesView(){
 
 const list=
@@ -1691,11 +1629,9 @@ return `
 
 </div>
 
-
 <div class="card">
 
 <div class="form">
-
 
 <div class="field">
 
@@ -1708,7 +1644,6 @@ value="${today()}"
 >
 
 </div>
-
 
 <div class="field">
 
@@ -1728,7 +1663,6 @@ Personal / Familiar
 
 </div>
 
-
 <div class="field">
 
 <label>Categoría</label>
@@ -1743,7 +1677,6 @@ c=>`<option>${c}</option>`
 
 </div>
 
-
 <div class="field">
 
 <label>Monto</label>
@@ -1756,7 +1689,6 @@ step=".01"
 
 </div>
 
-
 <div class="field">
 
 <label>Descripción</label>
@@ -1768,7 +1700,6 @@ placeholder="Detalle opcional"
 
 </div>
 
-
 <button
 class="btn red"
 onclick="addExpense()">
@@ -1778,7 +1709,6 @@ Registrar gasto
 </div>
 
 </div>
-
 
 <div class="card">
 
@@ -1797,7 +1727,6 @@ x=>expenseItem(x)
 `;
 
 }
-
 
 function expenseItem(x){
 
@@ -1820,7 +1749,6 @@ ${x.type==='personal'
 </small>
 
 </div>
-
 
 <div>
 
@@ -1852,7 +1780,6 @@ onclick="deleteExpense('${x.id}')">
 
 }
 
-
 function notesView(){
 
 return `
@@ -1864,7 +1791,6 @@ return `
 </h2>
 
 </div>
-
 
 <div class="card">
 
@@ -1885,7 +1811,6 @@ placeholder="Ej: Empresa aún debe confirmar el pago..."
 
 </div>
 
-
 <button
 class="btn"
 onclick="addNote()">
@@ -1895,7 +1820,6 @@ Guardar nota
 </div>
 
 </div>
-
 
 <div class="card">
 
@@ -1940,7 +1864,6 @@ onclick="deleteNote('${x.id}')">
 
 }
 
-
 function reports(){
 
 const ws=
@@ -1958,7 +1881,6 @@ return `
 </h2>
 
 </div>
-
 
 <div class="card tablewrap">
 
@@ -1978,7 +1900,6 @@ return `
 </tr>
 
 </thead>
-
 
 <tbody>
 
@@ -2034,7 +1955,6 @@ ${money(pendingWeek(w))}
 
 }
 
-
 function settingsView(){
 
 return `
@@ -2047,9 +1967,7 @@ return `
 
 </div>
 
-
 <div class="grid settings-grid">
-
 
 <div class="card">
 
@@ -2094,7 +2012,6 @@ ${state.settings.theme==='violet'?'selected':''}>
 
 </div>
 
-
 <div class="card">
 
 <h3>
@@ -2131,7 +2048,6 @@ ${x}
 
 </div>
 
-
 <div class="card">
 
 <h3>
@@ -2153,7 +2069,6 @@ render();
 ">
 
 </div>
-
 
 <div class="field">
 
@@ -2177,7 +2092,6 @@ render();
 
 </div>
 
-
 <div class="card">
 
 <h3>
@@ -2194,7 +2108,6 @@ como caché para trabajar cuando
 la conexión no está disponible.
 
 </p>
-
 
 <div class="row">
 
@@ -2223,7 +2136,6 @@ onclick="logout()">
 `;
 
 }
-
 
 function render(){
 
@@ -2260,7 +2172,6 @@ drawCharts,
 
 }
 
-
 function wedit(k,v){
 
 selectedWeek()[k]=
@@ -2274,7 +2185,6 @@ render();
 
 }
 
-
 function dayedit(d,v){
 
 selectedWeek().days[d]=n(v);
@@ -2284,7 +2194,6 @@ queueSync();
 render();
 
 }
-
 
 function newWeek(){
 
@@ -2311,7 +2220,6 @@ queueSync();
 render();
 
 }
-
 
 function addSale(){
 
@@ -2347,7 +2255,6 @@ render();
 
 }
 
-
 async function addIncome(){
 
 const date=
@@ -2364,7 +2271,6 @@ document.getElementById('iamt').value
 const weekId=
 document.getElementById('iweek').value;
 
-
 if(
 !date||
 !description||
@@ -2379,7 +2285,6 @@ alert(
 return;
 
 }
-
 
 const item={
 id:uid(),
@@ -2396,7 +2301,6 @@ queueSync();
 render();
 
 }
-
 
 async function addExpense(){
 
@@ -2417,7 +2321,6 @@ document.getElementById('eamt').value
 const description=
 document.getElementById('edesc').value.trim();
 
-
 if(
 !date||
 !amount||
@@ -2431,7 +2334,6 @@ alert(
 return;
 
 }
-
 
 state.expenses.push({
 
@@ -2449,7 +2351,6 @@ queueSync();
 render();
 
 }
-
 
 function addNote(){
 
@@ -2472,7 +2373,6 @@ queueSync();
 render();
 
 }
-
 
 function remove(kind,id,label){
 
@@ -2515,7 +2415,6 @@ render();
 
 }
 
-
 function deleteSale(id){
 
 remove(
@@ -2525,7 +2424,6 @@ id,
 );
 
 }
-
 
 function deleteIncome(id){
 
@@ -2537,7 +2435,6 @@ id,
 
 }
 
-
 function deleteExpense(id){
 
 remove(
@@ -2548,7 +2445,6 @@ id,
 
 }
 
-
 function deleteNote(id){
 
 remove(
@@ -2558,7 +2454,6 @@ id,
 );
 
 }
-
 
 function undo(label,fn){
 
@@ -2580,7 +2475,6 @@ setTimeout(
 
 }
 
-
 function doUndo(){
 
 if(undoData)
@@ -2592,7 +2486,6 @@ document.getElementById('undo')
 .classList.remove('show');
 
 }
-
 
 function editSale(id){
 
@@ -2656,7 +2549,6 @@ queueSync();
 render();
 
 }
-
 
 function editIncome(id){
 
@@ -2743,7 +2635,6 @@ render();
 
 }
 
-
 function editExpense(id){
 
 let x=
@@ -2825,7 +2716,6 @@ render();
 
 }
 
-
 function drawCharts(){
 
 if(
@@ -2861,7 +2751,6 @@ cs.getPropertyValue('--muted').trim();
 
 Chart.defaults.color=mut;
 
-
 const salesCanvas=
 document.getElementById(
 'salesChart'
@@ -2872,10 +2761,8 @@ document.getElementById(
 'expenseChart'
 );
 
-
 if(!salesCanvas||!expenseCanvas)
 return;
-
 
 charts.sales=
 new Chart(
@@ -2924,7 +2811,6 @@ position:'bottom'
 }
 );
 
-
 let cats=
 CATS.map(
 c=>
@@ -2945,7 +2831,6 @@ x.category===c
 .filter(
 x=>x[1]
 );
-
 
 charts.exp=
 new Chart(
@@ -2981,7 +2866,6 @@ position:'bottom'
 
 }
 
-
 function queueSync(){
 
 localRevision++;
@@ -3000,7 +2884,6 @@ syncNow,
 
 }
 
-
 function localOldState(){
 
 try{
@@ -3018,7 +2901,6 @@ return null;
 }
 
 }
-
 
 function mergeLegacy(legacy){
 
@@ -3049,7 +2931,6 @@ state[k]=legacy[k];
 
 }
 
-
 if(legacy.settings){
 
 state.settings={
@@ -3059,12 +2940,10 @@ state.settings={
 
 }
 
-
 if(legacy.view)
 state.view=legacy.view;
 
 }
-
 
 async function getMemberships(){
 
@@ -3094,7 +2973,6 @@ x=>x.company_id
 ];
 
 }
-
 
 async function loadCompany(id){
 
@@ -3329,7 +3207,6 @@ e
 
 }
 
-
 async function persist(){
 
 if(
@@ -3425,7 +3302,6 @@ return persistChain;
 
 }
 
-
 async function syncNow(){
 
 if(!currentCompanyId)
@@ -3472,7 +3348,6 @@ c.name||
 
 }
 
-
 async function switchCompany(id){
 
 if(
@@ -3489,7 +3364,6 @@ currentCompanyId
 
 }
 
-
 async function createCompany(){
 
 const name=
@@ -3500,10 +3374,8 @@ prompt(
 if(!name?.trim())
 return;
 
-
 const id=
 crypto.randomUUID();
-
 
 let r=
 await sb
@@ -3514,7 +3386,6 @@ id,
 name:name.trim()
 
 });
-
 
 if(r.error){
 
@@ -3528,7 +3399,6 @@ return;
 
 }
 
-
 r=
 await sb
 .from('company_members')
@@ -3538,7 +3408,6 @@ company_id:id,
 user_id:currentUser.id
 
 });
-
 
 if(r.error){
 
@@ -3552,14 +3421,12 @@ return;
 
 }
 
-
 companies.push({
 
 id,
 name:name.trim()
 
 });
-
 
 currentCompanyId=id;
 
@@ -3612,12 +3479,10 @@ render();
 
 }
 
-
 async function initCompanies(){
 
 const ids=
 await getMemberships();
-
 
 if(!ids.length){
 
@@ -3627,7 +3492,6 @@ throw new Error(
 
 }
 
-
 companies=
 ids.map(
 id=>({
@@ -3635,7 +3499,6 @@ id,
 name:null
 })
 );
-
 
 for(
 const c of companies
@@ -3653,30 +3516,25 @@ c.id
 )
 .maybeSingle();
 
-
 c.name=
 data?.data?.settings?.name||
 null;
 
 }
 
-
 let cached=
 localStorage.getItem(
 'gemelitas_active_company'
 );
-
 
 currentCompanyId=
 ids.includes(cached)
 ?cached
 :ids[0];
 
-
 await loadCompany(
 currentCompanyId
 );
-
 
 localStorage.setItem(
 'gemelitas_active_company',
@@ -3684,7 +3542,6 @@ currentCompanyId
 );
 
 }
-
 
 async function loginUser(){
 
@@ -3704,7 +3561,6 @@ document.getElementById(
 'loginMessage'
 );
 
-
 if(!email||!password){
 
 message.textContent=
@@ -3714,10 +3570,8 @@ return;
 
 }
 
-
 message.textContent=
 'Iniciando sesión…';
-
 
 const {
 data,
@@ -3730,7 +3584,6 @@ password
 
 });
 
-
 if(error){
 
 message.textContent=
@@ -3739,7 +3592,6 @@ message.textContent=
 return;
 
 }
-
 
 currentUser=data.user;
 
@@ -3750,7 +3602,6 @@ document.getElementById(
 document.getElementById(
 'app'
 ).style.display='block';
-
 
 try{
 
@@ -3775,14 +3626,12 @@ console.error(e);
 
 }
 
-
 async function checkSession(){
 
 const {
 data
 }=
 await sb.auth.getSession();
-
 
 if(data.session){
 
@@ -3796,7 +3645,6 @@ document.getElementById(
 document.getElementById(
 'app'
 ).style.display='block';
-
 
 try{
 
@@ -3819,7 +3667,6 @@ console.error(e);
 }
 
 }
-
 
 async function logout(){
 
@@ -3857,13 +3704,11 @@ realtimeChannel=null;
 
 await sb.auth.signOut();
 
-
 currentUser=null;
 
 currentCompanyId=null;
 
 companies=[];
-
 
 document.getElementById(
 'app'
@@ -3872,7 +3717,6 @@ document.getElementById(
 document.getElementById(
 'loginScreen'
 ).style.display='flex';
-
 
 document.getElementById(
 'loginPassword'
@@ -3884,7 +3728,6 @@ document.getElementById(
 'Sesión cerrada.';
 
 }
-
 
 function backup(){
 
@@ -3907,7 +3750,6 @@ type:'application/json'
 }
 );
 
-
 let a=
 document.createElement('a');
 
@@ -3929,7 +3771,6 @@ URL.revokeObjectURL(a.href),
 
 }
 
-
 function restoreFile(){
 
 let i=
@@ -3939,13 +3780,11 @@ i.type='file';
 
 i.accept='.json';
 
-
 i.onchange=
 e=>{
 
 let r=
 new FileReader();
-
 
 r.onload=
 async()=>{
@@ -3956,7 +3795,6 @@ let j=
 JSON.parse(
 r.result
 );
-
 
 if(j.state){
 
@@ -3977,7 +3815,6 @@ state={
 };
 
 }
-
 
 ensureWeek();
 
@@ -4001,18 +3838,15 @@ alert(
 
 };
 
-
 r.readAsText(
 e.target.files[0]
 );
 
 };
 
-
 i.click();
 
 }
-
 
 window.addEventListener(
 'online',
@@ -4021,7 +3855,6 @@ setStatus('Conexión recuperada');
 syncNow();
 }
 );
-
 
 window.addEventListener(
 'offline',
@@ -4032,7 +3865,6 @@ false
 );
 }
 );
-
 
 window.addEventListener(
 'beforeunload',
@@ -4047,7 +3879,6 @@ window.addEventListener(
 saveLocal();
 }
 );
-
 
 sb.auth.onAuthStateChange(
 (event,session)=>{
@@ -4069,11 +3900,9 @@ document.getElementById(
 }
 );
 
-
 checkSession();
 
 </script>
-
 
 <script>
 
