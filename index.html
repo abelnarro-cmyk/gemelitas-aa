@@ -704,6 +704,8 @@ box-shadow:var(--shadow);min-width:min(340px,92vw);
 .bootCard strong{font-size:1.05rem}
 .bootCard span{font-size:.78rem;color:var(--muted)}
 
+.session-toggle{width:100%;justify-content:space-between}
+@media(max-width:620px){.session-toggle{width:100%}}
 </style>
 </head>
 
@@ -1017,6 +1019,7 @@ let globalCompanyFilter='all';
 
 let globalLoading=false;
 let deviceSessions=[];
+let sessionsOpen=false;
 let sessionCheckTimer=null;
 let currentSessionId=null;
 let remotePendingSnapshot=null;
@@ -1337,25 +1340,51 @@ return 'Fecha no disponible';
 }
 }
 
+function groupedDeviceSessions(){
+const groups=new Map();
+for(const x of (Array.isArray(deviceSessions)?deviceSessions:[])){
+const key=String(x.device_id||`${x.device_name||'Dispositivo'}|${x.browser||''}|${x.os||''}|${x.device_type||''}`).trim();
+if(!groups.has(key))groups.set(key,[]);
+groups.get(key).push(x);
+}
+return [...groups.values()].map(list=>{
+list.sort((a,b)=>String(b.last_seen_at||b.updated_at||b.created_at||'').localeCompare(String(a.last_seen_at||a.updated_at||a.created_at||'')));
+const latest=list[0]||{};
+const active=list.filter(x=>Boolean(x.active)&&!x.revoked_at);
+const current=list.some(x=>String(x.session_id)===String(currentSessionId));
+return {latest,list,active,current};
+}).sort((a,b)=>String(b.latest.last_seen_at||b.latest.updated_at||'').localeCompare(String(a.latest.last_seen_at||a.latest.updated_at||'')));
+}
+
 function renderSessionsPanel(){
 if(!currentUser)return '<div class="empty">Inicia sesión para consultar tus dispositivos.</div>';
-if(!deviceSessions.length)return '<div class="empty">No hay información de sesiones todavía. Pulsa “Actualizar”.</div>';
-return deviceSessions.map(x=>{
-const current=String(x.session_id)===String(currentSessionId);
-const active=Boolean(x.active)&&!x.revoked_at;
+const groups=groupedDeviceSessions();
+if(!groups.length)return '<div class="empty">No hay información de sesiones todavía. Pulsa “Actualizar”.</div>';
+return groups.map(g=>{
+const x=g.latest;
+const active=g.active.length>0;
+const current=g.current;
+const activeIds=g.active.map(s=>s.session_id).filter(Boolean);
+const idsJson=encodeURIComponent(JSON.stringify(activeIds));
 return `<div class="session-item">
 <div class="session-main">
 <div class="session-title">${esc(x.device_name||'Dispositivo')} ${current?'<span class="session-current">· ESTE DISPOSITIVO</span>':''}</div>
-<div class="session-meta">${esc(x.browser||'Navegador')} · ${esc(x.os||'Sistema')} · ${esc(x.device_type||'Equipo')}<br>Última actividad: ${esc(formatSessionDate(x.last_seen_at||x.updated_at))}<br>Inicio: ${esc(formatSessionDate(x.created_at))}</div>
-<div class="${active?'session-current':'session-revoked'}">${active?'● Sesión activa':'● Sesión cerrada'}</div>
+<div class="session-meta">${esc(x.browser||'Navegador')} · ${esc(x.os||'Sistema')} · ${esc(x.device_type||'Equipo')}<br>Última conexión: ${esc(formatSessionDate(x.last_seen_at||x.updated_at||x.created_at))}${g.active.length>1?`<br>${g.active.length} sesiones técnicas agrupadas en este dispositivo`:''}</div>
+<div class="${active?'session-current':'session-revoked'}">${active?'● Sesión activa':'● Sin sesión activa'}</div>
 </div>
 <div class="session-actions">${current
 ?'<button class="btn secondary small" onclick="logout()">Cerrar esta</button>'
 :active
-?`<button class="btn red small" onclick="revokeDeviceSession('${esc(x.session_id)}')">Cerrar sesión</button>`
+?`<button class="btn red small" onclick="revokeDeviceGroup(decodeURIComponent('${idsJson}'))">Cerrar sesión</button>`
 :''}</div>
 </div>`;
 }).join('');
+}
+
+function toggleSessionsPanel(){
+sessionsOpen=!sessionsOpen;
+render();
+if(sessionsOpen)loadDeviceSessions(false);
 }
 
 async function registerCurrentSession(session){
@@ -1430,6 +1459,22 @@ if(error)throw error;
 if(!data)throw new Error('La sesión no existe o ya fue cerrada.');
 await loadDeviceSessions(true);
 }catch(e){console.error(e);alert('No se pudo cerrar esa sesión.');}
+}
+
+async function revokeDeviceGroup(sessionIds){
+let ids=[];
+try{ids=Array.isArray(sessionIds)?sessionIds:JSON.parse(sessionIds||'[]');}catch(e){ids=[];}
+ids=ids.filter(Boolean).filter(id=>String(id)!==String(currentSessionId));
+if(!ids.length)return;
+if(!confirm('¿Cerrar la sesión de este dispositivo?'))return;
+try{
+for(const id of ids){
+const {data,error}=await sb.rpc('gemelitas_revoke_session',{p_session_id:id});
+if(error)throw error;
+if(!data)console.warn('Sesión no encontrada o ya cerrada:',id);
+}
+await loadDeviceSessions(true);
+}catch(e){console.error(e);alert('No se pudo cerrar la sesión de ese dispositivo.');}
 }
 
 async function signOutOtherSessions(){
@@ -3049,12 +3094,12 @@ ${companies.length<=1?'<small class="sub" style="display:block;margin-top:8px">D
 
 <div class="card">
 <h3>📱 Sesiones y dispositivos</h3>
-<p class="sub">Aquí puedes ver dónde está abierta esta cuenta y cerrar sesiones de otros equipos. El botón se actualiza con la información más reciente de Supabase.</p>
-<div class="row" style="margin-bottom:10px">
-<button class="btn secondary small" onclick="loadDeviceSessions(true)">🔄 Actualizar</button>
-<button class="btn secondary small" onclick="signOutOtherSessions()">🔐 Cerrar las demás</button>
+<p class="sub">Consulta en cualquier momento dónde está abierta tu cuenta. Los dispositivos repetidos se agrupan y solo se muestra una tarjeta por dispositivo, con su última conexión.</p>
+<div class="row" style="margin-top:10px">
+<button class="btn secondary small" onclick="toggleSessionsPanel()">${sessionsOpen?'▴ Ocultar sesiones':'▾ Ver sesiones y dispositivos'}</button>
+${sessionsOpen?'<button class="btn secondary small" onclick="loadDeviceSessions(true)">🔄 Actualizar</button><button class="btn secondary small" onclick="signOutOtherSessions()">🔐 Cerrar las demás</button>':''}
 </div>
-<div id="sessionsPanel" class="session-grid">${renderSessionsPanel()}</div>
+${sessionsOpen?'<div id="sessionsPanel" class="session-grid" style="margin-top:10px">'+renderSessionsPanel()+'</div>':''}
 </div>
 
 <div class="card">
@@ -3139,7 +3184,7 @@ setTimeout(drawCharts,30);
 if(v==='global'&&!globalLoading)
 setTimeout(drawGlobalCharts,30);
 
-if(v==='settings')
+if(v==='settings'&&sessionsOpen)
 setTimeout(()=>loadDeviceSessions(false),50);
 
 }
