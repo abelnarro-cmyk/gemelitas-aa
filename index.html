@@ -4711,248 +4711,21 @@ return [...new Set((data||[]).map(x=>x.company_id).filter(Boolean))];
 }
 
 async function loadCompany(id){
-
-currentCompanyId=id;
-
-loading=true;
-
-setStatus(
-'Cargando empresa…'
-);
-
-if(realtimeChannel){
-
-try{
-await sb.removeChannel(realtimeChannel);
-}catch(e){
-console.warn(e);
-}
-
-realtimeChannel=null;
-
-}
-
-const cached=await readLocalCache(id);
-
-let localState=
-structuredClone(DEFAULT);
-
-try{
-if(cached)
-localState={
-...structuredClone(DEFAULT),
-...cached
-};
-}catch(e){
-console.warn('Caché local inválida',e);
-}
-
-state=localState;
-state.view='dashboard';
-
-localRevision=0;
-
-localDirty=false;
-
+if(!id||!currentUser?.id)return false;
+currentCompanyId=String(id); loading=true; setStatus('Cargando empresa…');
+if(realtimeChannel){try{await sb.removeChannel(realtimeChannel);}catch(e){} realtimeChannel=null;}
+localRevision=0; localDirty=false; remotePendingSnapshot=null; baseServerState=null;
 let serverData=null;
-
-try{
-
-const {
-data,
-error
-}=
-await sb
-.from('company_app_data')
-.select(
-'company_id,data,updated_at'
-)
-.eq(
-'company_id',
-id
-)
-.maybeSingle();
-
-if(error)
-throw error;
-
-serverData=data;
-
-}catch(error){
-
-console.error(error);
-
-setStatus(
-'Sin conexión · usando datos locales',
-false
-);
-
-ensureWeek();
-baseServerState=structuredClone(state);
-remotePendingSnapshot=null;
-
-loading=false;
-
-render();
-
-updateCompanySelect();
-
-return;
-
+try{const {data,error}=await sb.from('company_app_data').select('company_id,data,updated_at').eq('company_id',id).maybeSingle();if(error)throw error;serverData=data||null;}catch(error){
+ const cached=await readLocalCache(id); state=cached?{...structuredClone(DEFAULT),...cached,settings:{...DEFAULT.settings,...(cached.settings||{})}}:structuredClone(DEFAULT); state.view='dashboard'; ensureWeek(); baseServerState=structuredClone(state); loading=false; updateCompanySelect(); render(); setStatus('Sin conexión · usando datos locales',false); return false;
 }
-
-if(serverData?.data){
-
-state={
-...structuredClone(DEFAULT),
-...serverData.data,
-settings:{
-...DEFAULT.settings,
-...(serverData.data.settings||{})
+if(serverData?.data){const incoming=serverData.data;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(state);}else{state=structuredClone(DEFAULT);baseServerState=structuredClone(state);}
+const appearance=getGlobalAppearance();state.settings.theme=appearance.theme;state.settings.font=appearance.font;state.view='dashboard';ensureWeek();loading=false;
+if(!serverData?.data){localDirty=true;const saved=await persist();if(!saved){await writeIndexedCache(id,state);setStatus('Empresa nueva · pendiente de sincronizar',false);}}else{await writeIndexedCache(id,state);try{localStorage.removeItem('gemelitas_cache_'+id);}catch(e){}setStatus('Sincronizado');}
+updateCompanySelect();render();
+try{realtimeChannel=sb.channel('company_app_data_'+id).on('postgres_changes',{event:'*',schema:'public',table:'company_app_data',filter:'company_id=eq.'+id},payload=>{const incoming=payload?.new?.data;if(!incoming||String(payload?.new?.company_id)!==String(currentCompanyId))return;if(localDirty){remotePendingSnapshot=structuredClone(incoming);setStatus('Cambios de otro dispositivo pendientes',false);return;}const incomingTime=Date.parse(incoming.updatedAt||payload?.new?.updated_at||'');const localTime=Date.parse(state.updatedAt||'');if(Number.isFinite(incomingTime)&&Number.isFinite(localTime)&&incomingTime<=localTime)return;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(incoming);remotePendingSnapshot=null;state.view='dashboard';saveLocal();render();setStatus('Sincronizado');}).subscribe(status=>{if(status==='SUBSCRIBED')setStatus('Sincronizado');});}catch(e){console.warn('No se pudo activar la sincronización en tiempo real.',e);}
+try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){} return true;
 }
-};
-
-baseServerState=structuredClone(serverData.data);
-remotePendingSnapshot=null;
-
-const globalAppearance=getGlobalAppearance();
-state.settings.theme=globalAppearance.theme;
-state.settings.font=globalAppearance.font;
-
-}else{
-
-/*
-Si por alguna razón la empresa todavía no tiene
-un registro central, recuperamos únicamente el
-estado local antiguo como migración inicial.
-Después de esto, company_app_data es la fuente
-única de verdad.
-*/
-
-mergeLegacy(
-localOldState()
-);
-baseServerState=structuredClone(state);
-remotePendingSnapshot=null;
-
-}
-
-state.view='dashboard';
-
-ensureWeek();
-
-saveLocal();
-
-loading=false;
-
-if(!serverData?.data){
-localDirty=true;
-await persist();
-}else{
-render();
-setStatus('Sincronizado');
-await writeIndexedCache(id,state);
-try{localStorage.removeItem('gemelitas_cache_'+id);}catch(e){}
-}
-
-updateCompanySelect();
-
-/*
-Sincronización en tiempo real entre dispositivos.
-Si otro teléfono, laptop o PC cambia la empresa,
-el cambio se refleja sin volver a iniciar sesión.
-*/
-
-try{
-
-realtimeChannel=
-sb
-.channel(
-'company_app_data_'+id
-)
-.on(
-'postgres_changes',
-{
-event:'*',
-schema:'public',
-table:'company_app_data',
-filter:'company_id=eq.'+id
-},
-payload=>{
-
-const incoming=
-payload?.new?.data;
-
-if(
-!incoming||
-payload?.new?.company_id!==currentCompanyId
-)
-return;
-
-if(localDirty){
-remotePendingSnapshot=structuredClone(incoming);
-setStatus('Cambios de otro dispositivo pendientes',false);
-return;
-}
-
-const incomingTime=
-Date.parse(
-incoming.updatedAt||payload?.new?.updated_at||''
-);
-
-const localTime=
-Date.parse(
-state.updatedAt||''
-);
-
-if(
-Number.isFinite(incomingTime)&&
-Number.isFinite(localTime)&&
-incomingTime<=localTime
-)
-return;
-
-state={
-...structuredClone(DEFAULT),
-...incoming,
-settings:{
-...DEFAULT.settings,
-...(incoming.settings||{})
-}
-};
-baseServerState=structuredClone(incoming);
-remotePendingSnapshot=null;
-
-state.view='dashboard';
-
-saveLocal();
-
-render();
-
-setStatus(
-'Sincronizado'
-);
-
-}
-)
-.subscribe(
-status=>{
-if(status==='SUBSCRIBED')
-setStatus('Sincronizado');
-}
-);
-
-}catch(e){
-
-console.warn(
-'No se pudo activar la sincronización en tiempo real.',
-e
-);
-
-}
-
-}
-
 
 function snapshotForMerge(x){
 return x?structuredClone(x):structuredClone(DEFAULT);
@@ -5017,75 +4790,8 @@ return data;
 }
 
 async function persist(){
-if(!currentCompanyId||loading)return false;
-const companyId=currentCompanyId;
-const revision=localRevision;
-const localSnapshot=snapshotForMerge(state);
-const expectedBase=snapshotForMerge(baseServerState||state);
-
-if(!localDirty&&!remotePendingSnapshot){
-setStatus('Sincronizado');
-return true;
-}
-
-persistChain=persistChain.catch(()=>false).then(async()=>{
-if(companyId!==currentCompanyId)return false;
-setStatus('Guardando…');
-
-for(let attempt=1;attempt<=2;attempt++){
-try{
-let serverRow=await fetchServerCompanyData(companyId);
-let snapshot=localSnapshot;
-
-if(serverRow?.data&&!sameJson(serverRow.data,expectedBase)){
-if(!localDirty){
-snapshot=structuredClone(serverRow.data);
-}else{
-snapshot=mergeServerState(expectedBase,localSnapshot,serverRow.data);
-}
-}
-
-snapshot.updatedAt=new Date().toISOString();
-
-const payload={company_id:companyId,data:snapshot};
-const {error}=await sb.from('company_app_data').upsert(
-payload,
-{onConflict:'company_id'}
-);
-
-if(error)throw error;
-
-state={
-...structuredClone(DEFAULT),
-...snapshot,
-settings:{...DEFAULT.settings,...(snapshot.settings||{})}
-};
-
-baseServerState=structuredClone(snapshot);
-remotePendingSnapshot=null;
-await writeIndexedCache(companyId,state);
-try{localStorage.removeItem('gemelitas_cache_'+companyId);}catch(e){}
-setStatus('Sincronizado');
-if(localRevision===revision)localDirty=false;
-return true;
-
-}catch(error){
-console.error('Error de guardado:',error);
-
-if(attempt===1&&/jwt|token|session|auth/i.test(String(error?.message||''))){
-try{await sb.auth.refreshSession();continue;}catch(e){console.warn('No se pudo renovar la sesión:',e);}
-}
-if(attempt===1&&navigator.onLine!==false){
-await new Promise(r=>setTimeout(r,450));
-continue;
-}
-setStatus('Pendiente de sincronizar · datos protegidos localmente',false);
-return false;
-}
-}
-return false;
-});
-return persistChain;
+if(!currentCompanyId||loading)return false;const companyId=String(currentCompanyId);
+persistChain=persistChain.catch(()=>false).then(async()=>{if(companyId!==String(currentCompanyId))return false;if(!localDirty&&!remotePendingSnapshot){setStatus('Sincronizado');return true;}setStatus('Guardando…');for(let attempt=1;attempt<=3;attempt++){try{const localSnapshot=snapshotForMerge(state);const expectedBase=snapshotForMerge(baseServerState||state);const serverRow=await fetchServerCompanyData(companyId);let snapshot=localSnapshot;if(serverRow?.data&&!sameJson(serverRow.data,expectedBase))snapshot=mergeServerState(expectedBase,localSnapshot,serverRow.data);else if(remotePendingSnapshot)snapshot=mergeServerState(expectedBase,localSnapshot,remotePendingSnapshot);snapshot.updatedAt=new Date().toISOString();const {error}=await sb.from('company_app_data').upsert({company_id:companyId,data:snapshot},{onConflict:'company_id'});if(error)throw error;if(companyId!==String(currentCompanyId))return false;state={...structuredClone(DEFAULT),...snapshot,settings:{...DEFAULT.settings,...(snapshot.settings||{})}};baseServerState=structuredClone(snapshot);remotePendingSnapshot=null;await writeIndexedCache(companyId,state);try{localStorage.removeItem('gemelitas_cache_'+companyId);}catch(e){}setStatus('Sincronizado');localDirty=false;return true;}catch(error){console.error('Error de guardado:',error);if(attempt<3&&/jwt|token|session|auth/i.test(String(error?.message||''))){try{await sb.auth.refreshSession();continue;}catch(e){}}if(attempt<3&&navigator.onLine!==false){await new Promise(r=>setTimeout(r,500));continue;}await writeIndexedCache(companyId,state);setStatus('Pendiente de sincronizar · datos protegidos localmente',false);return false;}}return false;});return persistChain;
 }
 
 async function syncNow(){
@@ -5164,100 +4870,29 @@ render();
 }
 
 async function createCompany(){
-
-const name=prompt('Nombre de la nueva empresa');
-if(!name?.trim()) return;
-
-if(!currentUser?.id){
-alert('La sesión no está disponible. Vuelve a iniciar sesión.');
-return;
+const name=prompt('Nombre de la nueva empresa');const cleanName=String(name||'').trim();if(!cleanName)return;if(!currentUser?.id){alert('La sesión no está disponible. Vuelve a iniciar sesión.');return;}
+const previousId=currentCompanyId;setStatus('Creando empresa…');
+try{
+ const {data,error}=await sb.rpc('create_company_for_current_user',{p_name:cleanName});if(error)throw error;
+ const id=String(typeof data==='string'?data:data?.id||'');if(!id)throw new Error('Supabase no devolvió el ID de la nueva empresa.');
+ const ids=await getMemberships();if(!ids.map(String).includes(id))throw new Error('La empresa fue creada, pero la membresía no quedó disponible.');
+ companies=ids.map(cid=>{const old=companies.find(c=>String(c.id)===String(cid));return{id:String(cid),name:String(cid)===id?cleanName:(old?.name||null)};});
+ // Cargamos la empresa por el mismo camino que cualquier empresa existente.
+ // Esto evita que una empresa recién creada quede sin caché ni Realtime.
+ if(realtimeChannel){try{await sb.removeChannel(realtimeChannel);}catch(e){}realtimeChannel=null;}
+ currentCompanyId=id;
+ await removeAllLocalCacheForCompany(id);
+ const loaded=await loadCompany(id);if(!loaded)throw new Error('La empresa fue creada, pero no pudo abrirse correctamente.');
+ state.settings.name=cleanName;state.view='dashboard';queueSync();if(!(await syncNow()))throw new Error('La empresa se creó, pero no pudo guardarse su estado inicial.');
+ try{localStorage.setItem(activeCompanyStorageKey(),id);}catch(e){}updateCompanySelect();render();setStatus('Empresa nueva · lista para usar');
+}catch(e){
+ console.error('createCompany:',e);currentCompanyId=previousId;if(previousId){try{await loadCompany(previousId);}catch(err){console.error(err);}}setStatus('No se pudo crear la empresa',false);alert('No se pudo crear la empresa. '+authErrorText(e));
 }
-
-setStatus('Creando empresa…');
-
-const {data,error}=await sb.rpc('create_company_for_current_user',{
-p_name:name.trim()
-});
-
-if(error || !data){
-console.error(error);
-setStatus('No se pudo crear la empresa',false);
-alert('No se pudo crear la empresa. Primero aplica el SQL de configuración que te entrego con esta versión.');
-return;
-}
-
-const id=typeof data==='string'?data:data.id;
-
-companies.push({id,name:name.trim()});
-currentCompanyId=id;
-state=structuredClone(DEFAULT);
-state.settings.name=name.trim();
-const globalAppearance=getGlobalAppearance();
-state.settings.theme=globalAppearance.theme;
-state.settings.font=globalAppearance.font;
-state.view='dashboard';
-loading=false;
-localRevision=0;
-localDirty=false;
-globalMetrics=[];
-
-await removeAllLocalCacheForCompany(id);
-localDirty=true;
-await persist();
-updateCompanySelect();
-try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){}
-render();
-setStatus('Sincronizado');
-
 }
 
 async function deleteCurrentCompany(){
-
-if(companies.length<=1){
-alert('Debes conservar al menos una empresa.');
-return;
-}
-
-const company=companies.find(c=>c.id===currentCompanyId);
-const name=state.settings.name||company?.name||'esta empresa';
-
-const confirmation=prompt(
-`Esta acción es PERMANENTE y borrará todos los datos de "${name}".\n\nEscribe exactamente el nombre de la empresa para confirmar:`
-);
-
-if(confirmation!==name){
-alert('No se eliminó la empresa. El nombre de confirmación no coincide.');
-return;
-}
-
-try{
-setStatus('Eliminando empresa…');
-const {error}=await sb.rpc('delete_company_for_current_user',{p_company_id:currentCompanyId});
-if(error) throw error;
-
-const deletedId=currentCompanyId;
-companies=companies.filter(c=>c.id!==deletedId);
-await removeAllLocalCacheForCompany(deletedId);
-
-if(realtimeChannel){
-try{await sb.removeChannel(realtimeChannel);}catch(e){}
-realtimeChannel=null;
-}
-
-globalMetrics=[];
-currentCompanyId=companies[0].id;
-try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){}
-await loadCompany(currentCompanyId);
-state.view='dashboard';
-updateCompanySelect();
-render();
-alert('Empresa eliminada correctamente.');
-}catch(e){
-console.error(e);
-setStatus('No se pudo eliminar la empresa',false);
-alert('No se pudo eliminar la empresa. Verifica que hayas aplicado el SQL de administración.');
-}
-
+if(companies.length<=1){alert('Debes conservar al menos una empresa.');return;}const company=companies.find(c=>String(c.id)===String(currentCompanyId));const name=state.settings.name||company?.name||'esta empresa';const confirmation=prompt(`Esta acción es PERMANENTE y borrará todos los datos de "${name}".\n\nEscribe exactamente el nombre de la empresa para confirmar:`);if(confirmation!==name){alert('No se eliminó la empresa. El nombre de confirmación no coincide.');return;}const deletedId=String(currentCompanyId);const remaining=companies.filter(c=>String(c.id)!==deletedId);const nextId=String(remaining[0].id);setStatus('Eliminando empresa…');
+try{if(localDirty)await syncNow();const {error}=await sb.rpc('delete_company_for_current_user',{p_company_id:deletedId});if(error)throw error;await removeAllLocalCacheForCompany(deletedId);if(realtimeChannel){try{await sb.removeChannel(realtimeChannel);}catch(e){}realtimeChannel=null;}companies=remaining;currentCompanyId=nextId;globalMetrics=[];globalMetricsUserId=null;globalMetricsErrors=[];try{localStorage.setItem(activeCompanyStorageKey(),nextId);}catch(e){}await loadCompany(nextId);state.view='dashboard';updateCompanySelect();render();alert('Empresa eliminada correctamente.');}catch(e){console.error('deleteCurrentCompany:',e);setStatus('No se pudo eliminar la empresa',false);alert('No se pudo eliminar la empresa. '+authErrorText(e));}
 }
 
 async function initCompanies(){
