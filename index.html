@@ -1784,8 +1784,9 @@ setStatus('Sincronizado');
 
 }catch(e){
 
-console.error(e);
-setStatus('No se pudo cargar el resumen general',false);
+console.error('Error actualizando General:',e);
+setStatus('General pendiente de sincronizar',false);
+/* Un fallo de lectura de General nunca cambia la empresa ni la vista. */
 
 }finally{
 
@@ -3821,50 +3822,64 @@ return msg;
 
 async function bootAuthenticatedSession(session,source='session'){
 if(!session?.user)return false;
-
 if(bootInProgress&&bootPromise)return bootPromise;
-
 bootInProgress=true;
 currentUser=session.user;
-
 bootPromise=(async()=>{
 try{
-await registerCurrentSession(session);
+try{await registerCurrentSession(session);}catch(e){console.warn('Registro de dispositivo omitido:',e);}
+try{
 await initCompanies();
+}catch(e){
+console.error('No se pudo preparar completamente la aplicación:',e);
+try{
+const ids=await getMemberships();
+if(!ids.length)throw new Error('No hay empresas asignadas a este usuario.');
+companies=ids.map(id=>({id,name:null}));
+currentCompanyId=ids[0];
+state=structuredClone(DEFAULT);
+state.view='global';
+loading=false;
+}catch(recoveryError){
+console.error('Recuperación de empresas fallida:',recoveryError);
+showAppScreen();
+const main=document.getElementById('main');
+if(main){main.innerHTML=`<div class="card hero">
+<div class="pill">CUENTA CONECTADA</div>
+<h2 style="margin-top:10px">Tu sesión está activa.</h2>
+<p class="sub">No se pudieron cargar las empresas en este momento. La sesión no se cerró. Puedes reintentar sin volver a iniciar sesión.</p>
+<div class="row" style="margin-top:12px">
+<button class="btn secondary" onclick="location.reload()">↻ Reintentar</button>
+<button class="btn red" onclick="logout()">🚪 Cerrar sesión</button>
+</div></div>`;}
+return false;
+}
+}
 state.view='global';
 showAppScreen();
 render();
 setStatus('Sincronizado');
+refreshGlobalMetrics().catch(e=>console.warn('General no pudo actualizarse:',e));
 return true;
 }catch(e){
-console.error('Error al preparar la aplicación:',e);
-/* Un registro histórico mal formado no debe bloquear el acceso.
-   Si el problema es de renderizado, dejamos la sesión abierta y mostramos
-   una pantalla de recuperación dentro de la aplicación. */
+console.error('Error inesperado después de autenticar:',e);
 try{
+if(!state)state=structuredClone(DEFAULT);
+if(!currentCompanyId&&companies?.length)currentCompanyId=companies[0].id;
+state.view='global';
+loading=false;
 showAppScreen();
-const main=document.getElementById('main');
-if(main){
-main.innerHTML=`<div class="card hero">
-<div class="pill">RECUPERACIÓN</div>
-<h2 style="margin-top:10px">La sesión está iniciada, pero hay un dato que necesita revisión.</h2>
-<p class="sub">${esc(authErrorText(e))}</p>
-<div class="row" style="margin-top:12px">
-<button class="btn secondary" onclick="location.reload()">↻ Reintentar</button>
-<button class="btn red" onclick="logout()">🚪 Cerrar sesión</button>
-</div>
-</div>`;
-}
-}catch(recoveryError){
-console.error('No se pudo mostrar la recuperación:',recoveryError);
-showLoginScreen('La contraseña fue aceptada, pero no se pudo preparar el sistema. '+authErrorText(e),true);
-}
+render();
+setStatus('Conectado · pendiente de actualizar',false);
+refreshGlobalMetrics().catch(err=>console.warn('Actualización general pendiente:',err));
+return true;
+}catch(uiError){
+console.error('No se pudo recuperar la interfaz:',uiError);
+showLoginScreen('La sesión sigue activa, pero la interfaz necesita recargarse. Pulsa Reintentar.',true);
 return false;
-}finally{
-bootInProgress=false;
 }
+}finally{bootInProgress=false;}
 })();
-
 return bootPromise;
 }
 
