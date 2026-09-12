@@ -823,6 +823,17 @@ table th{
   }
 }
 
+
+.week-search-card{
+  overflow:hidden;
+}
+.week-result-btn{
+  min-width:220px;
+}
+.week-search-card .section{
+  gap:12px;
+}
+
 </style>
 </head>
 
@@ -1127,6 +1138,8 @@ let localRevision=0;
 let localDirty=false;
 
 let globalMetrics=[];
+
+let globalCharts={growth:null,expenses:null};
 
 let globalLoading=false;
 let deviceSessions=[];
@@ -1961,7 +1974,7 @@ render();
 
 }
 
-function drawGlobalCharts(){
+function drawGlobalCharts(selectedId='all'){
 if(typeof Chart==='undefined')return;
 
 if(globalCharts.growth)globalCharts.growth.destroy();
@@ -1971,10 +1984,15 @@ const growthCanvas=document.getElementById('globalGrowthChart');
 const expenseCanvas=document.getElementById('globalExpenseChart');
 if(!growthCanvas||!expenseCanvas)return;
 
+let metrics=globalMetrics;
+if(selectedId&&selectedId!=='all'){
+metrics=globalMetrics.filter(m=>String(m.id)===String(selectedId));
+}
+
 const weekly={};
 const expenseCats={};
 
-globalMetrics.forEach(m=>{
+metrics.forEach(m=>{
 Object.entries(m.weekly||{}).forEach(([start,v])=>{
 if(!weekly[start])weekly[start]={sales:0,income:0,expenses:0};
 weekly[start].sales+=n(v.sales);
@@ -2017,87 +2035,22 @@ type:'line',
 data:{
 labels,
 datasets:[
-{
-label:'Ventas',
-data:starts.map(x=>weekly[x].sales),
-borderColor:accent,
-backgroundColor:accent+'18',
-fill:true,
-tension:.38,
-borderWidth:3,
-pointRadius:3,
-pointHoverRadius:6,
-pointBorderWidth:2
-},
-{
-label:'Ingresos',
-data:starts.map(x=>weekly[x].income),
-borderColor:blue,
-tension:.38,
-borderWidth:2.5,
-pointRadius:2.5,
-pointHoverRadius:5
-},
-{
-label:'Gastos',
-data:starts.map(x=>weekly[x].expenses),
-borderColor:red,
-tension:.38,
-borderWidth:2.5,
-pointRadius:2.5,
-pointHoverRadius:5
-},
-{
-label:'Utilidad',
-data:starts.map(x=>weekly[x].sales-weekly[x].expenses),
-borderColor:accent2,
-tension:.38,
-borderWidth:2.5,
-pointRadius:2.5,
-pointHoverRadius:5
-}
+{label:'Ventas',data:starts.map(x=>weekly[x].sales),borderColor:accent,backgroundColor:accent+'18',fill:true,tension:.38,borderWidth:3,pointRadius:3,pointHoverRadius:6,pointBorderWidth:2},
+{label:'Ingresos',data:starts.map(x=>weekly[x].income),borderColor:blue,tension:.38,borderWidth:2.5,pointRadius:2.5,pointHoverRadius:5},
+{label:'Gastos',data:starts.map(x=>weekly[x].expenses),borderColor:red,tension:.38,borderWidth:2.5,pointRadius:2.5,pointHoverRadius:5},
+{label:'Utilidad',data:starts.map(x=>weekly[x].sales-weekly[x].expenses),borderColor:accent2,tension:.38,borderWidth:2.5,pointRadius:2.5,pointHoverRadius:5}
 ]
 },
 options:{
-responsive:true,
-maintainAspectRatio:false,
-interaction:{mode:'index',intersect:false},
+responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
 animation:{duration:650,easing:'easeOutQuart'},
 plugins:{
-legend:{
-position:'bottom',
-labels:{
-usePointStyle:true,
-pointStyle:'circle',
-padding:18,
-boxWidth:8
-}
-},
-tooltip:{
-backgroundColor:'rgba(20,25,35,.92)',
-titleColor:'#fff',
-bodyColor:'#fff',
-borderWidth:0,
-cornerRadius:12,
-padding:12,
-displayColors:true,
-callbacks:{
-label:ctx=>' '+ctx.dataset.label+': '+money(ctx.parsed.y)
-}
-}
+legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:18,boxWidth:8}},
+tooltip:{backgroundColor:'rgba(20,25,35,.92)',titleColor:'#fff',bodyColor:'#fff',borderWidth:0,cornerRadius:12,padding:12,displayColors:true,callbacks:{label:ctx=>' '+ctx.dataset.label+': '+money(ctx.parsed.y)}}
 },
 scales:{
-x:{
-grid:{display:false},
-border:{display:false},
-ticks:{maxRotation:0}
-},
-y:{
-beginAtZero:true,
-border:{display:false},
-grid:{color:line+'55',drawTicks:false},
-ticks:{callback:moneyTick,padding:8}
-}
+x:{grid:{display:false},border:{display:false},ticks:{maxRotation:0}},
+y:{beginAtZero:true,border:{display:false},grid:{color:line+'55',drawTicks:false},ticks:{callback:moneyTick,padding:8}}
 }
 }
 });
@@ -2110,45 +2063,22 @@ data:{
 labels:cats.length?cats.map(x=>x[0]):['Sin gastos registrados'],
 datasets:[{
 data:cats.length?cats.map(x=>x[1]):[1],
-backgroundColor:cats.length
-?[
-accent,blue,red,accent2,'#f7ba55','#8bd3dd','#c084fc','#fb7185','#94a3b8','#34d399'
-].slice(0,cats.length)
-:['#94a3b8'],
+backgroundColor:cats.length?[accent,blue,red,accent2,'#f7ba55','#8bd3dd','#c084fc','#fb7185','#94a3b8','#34d399'].slice(0,cats.length):['#94a3b8'],
 borderWidth:3,
 borderColor:getComputedStyle(document.body).getPropertyValue('--card').trim()||'#fff',
 hoverOffset:7
 }]
 },
 options:{
-responsive:true,
-maintainAspectRatio:false,
-cutout:'68%',
-animation:{duration:700,easing:'easeOutQuart'},
+responsive:true,maintainAspectRatio:false,cutout:'68%',animation:{duration:700,easing:'easeOutQuart'},
 plugins:{
-legend:{
-position:'bottom',
-labels:{
-usePointStyle:true,
-pointStyle:'circle',
-padding:16,
-boxWidth:8
-}
-},
-tooltip:{
-backgroundColor:'rgba(20,25,35,.92)',
-titleColor:'#fff',
-bodyColor:'#fff',
-cornerRadius:12,
-padding:12,
-callbacks:{
-label:ctx=>' '+ctx.label+': '+money(ctx.parsed)
-}
-}
+legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:16,boxWidth:8}},
+tooltip:{backgroundColor:'rgba(20,25,35,.92)',titleColor:'#fff',bodyColor:'#fff',cornerRadius:12,padding:12,callbacks:{label:ctx=>' '+ctx.label+': '+money(ctx.parsed)}}
 }
 }
 });
 }
+
 function globalDashboard(){
 
 if(globalLoading){
@@ -2210,10 +2140,15 @@ return `
 <div class="card">
 <div class="section">
 <div>
-<h2>📈 Crecimiento general</h2>
-<p class="sub">Evolución consolidada de todas las empresas por semana.</p>
+<h2>📈 Crecimiento del negocio</h2>
+<p class="sub">Consulta el consolidado o revisa una empresa sin salir de General.</p>
 </div>
-<span class="pill">Todas las empresas</span>
+<div class="field" style="min-width:210px;margin:0">
+<select id="globalChartCompany" onchange="drawGlobalCharts(this.value)">
+<option value="all">🌐 Todas las empresas</option>
+${globalMetrics.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}
+</select>
+</div>
 </div>
 <div class="chart"><canvas id="globalGrowthChart"></canvas></div>
 </div>
@@ -2221,8 +2156,8 @@ return `
 <div class="card">
 <div class="section">
 <div>
-<h2>💸 Gastos del conjunto</h2>
-<p class="sub">Distribución de los gastos del conjunto de empresas.</p>
+<h2>💸 Gastos por empresa</h2>
+<p class="sub">El mismo selector permite revisar los gastos de cada empresa o el total.</p>
 </div>
 <span class="pill">Consolidado</span>
 </div>
@@ -2515,11 +2450,137 @@ la rentabilidad real del negocio.
 
 }
 
+
+function weekEndDate(start){
+const d=parseDateSafe(start);
+if(!d)return null;
+d.setDate(d.getDate()+6);
+return d.toISOString().slice(0,10);
+}
+
+function formatDateShort(value){
+const d=parseDateSafe(value);
+if(!d)return 'Fecha no disponible';
+return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+
+function weekRangeLabel(w){
+if(!w)return '';
+const end=weekEndDate(w.start);
+return `${formatDateShort(w.start)} al ${formatDateShort(end)}`;
+}
+
+function weeksSorted(){
+return [...state.weeks]
+.filter(w=>w&&w.start)
+.sort((a,b)=>String(b.start).localeCompare(String(a.start)));
+}
+
+function weekSearchResults(query){
+const q=String(query||'').trim().toLowerCase();
+const all=weeksSorted();
+if(!q)return all.slice(0,12);
+return all.filter(w=>{
+const hay=[
+w.label,
+w.start,
+weekEndDate(w.start),
+weekRangeLabel(w)
+].join(' ').toLowerCase();
+return hay.includes(q);
+}).slice(0,20);
+}
+
+function chooseWeekById(id){
+const w=state.weeks.find(x=>String(x.id)===String(id));
+if(!w)return;
+state.currentWeek=w.start;
+render();
+}
+
+function searchWeekCard(current){
+const results=weekSearchResults(document.getElementById('weekSearch')?.value||'');
+return `
+<div class="card week-search-card" style="margin-bottom:13px">
+<div class="section" style="margin-bottom:10px">
+<div>
+<h3 style="margin:0">🔎 Buscar una semana</h3>
+<p class="sub">Busca por nombre o fecha y abre directamente el control de esa semana.</p>
+</div>
+<span class="pill">${weeksSorted().length} semanas</span>
+</div>
+<div class="form" style="margin:0">
+<div class="field" style="grid-column:span 2">
+<label>Nombre o fecha</label>
+<input id="weekSearch" list="weekSearchList"
+placeholder="Ej. Semana 2 o 07/09/2026"
+value="${esc(document.getElementById('weekSearch')?.value||'')}"
+oninput="renderWeekSearchResults()">
+<datalist id="weekSearchList">
+${weeksSorted().map(w=>`<option value="${esc(w.label)}">${esc(weekRangeLabel(w))}</option>`).join('')}
+</datalist>
+</div>
+<div class="field">
+<label>Seleccionar semana</label>
+<select onchange="chooseWeekById(this.value)">
+<option value="">Elegir…</option>
+${weeksSorted().map(w=>`
+<option value="${esc(w.id)}" ${w.id===current.id?'selected':''}>
+${esc(w.label)} · ${esc(weekRangeLabel(w))}
+</option>`).join('')}
+</select>
+</div>
+</div>
+<div id="weekSearchResults" style="margin-top:10px">
+${renderWeekSearchResultsHTML(document.getElementById('weekSearch')?.value||'',current.id)}
+</div>
+</div>
+`;
+}
+
+function renderWeekSearchResultsHTML(query,currentId){
+const results=weekSearchResults(query);
+if(!results.length)return '<div class="empty">No encontré una semana con ese nombre o fecha.</div>';
+return results.slice(0,8).map(w=>`
+<button class="btn secondary small week-result-btn"
+style="margin:4px 6px 4px 0;text-align:left"
+onclick="chooseWeekById('${esc(w.id)}')">
+📅 ${esc(w.label)} · ${esc(weekRangeLabel(w))}
+${w.id===currentId?' · Actual':''}
+</button>
+`).join('');
+}
+
+function renderWeekSearchResults(){
+const box=document.getElementById('weekSearchResults');
+if(!box)return;
+box.innerHTML=renderWeekSearchResultsHTML(
+document.getElementById('weekSearch')?.value||'',
+selectedWeek().id
+);
+}
+
+function weekIncomeList(w){
+return state.income.filter(x=>x.weekId===w.id||weekForDate(x.date)===w.start);
+}
+
+function weekExpenseList(w){
+return state.expenses
+.filter(x=>weekForDate(x.date)===w.start)
+.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+}
+
 function weekView(){
 
 const w=selectedWeek();
+const incomes=weekIncomeList(w);
+const expenses=weekExpenseList(w);
+const businessExpenses=expenses.filter(x=>x.type==='business');
+const personalExpenses=expenses.filter(x=>x.type==='personal');
 
 return `
+
+${searchWeekCard(w)}
 
 <div class="section">
 
@@ -2549,6 +2610,10 @@ onclick="newWeek()">
 </div>
 
 <div class="card">
+
+<div class="notice" style="margin-bottom:12px">
+<b>📆 Periodo:</b> ${esc(weekRangeLabel(w))}
+</div>
 
 <div class="form">
 
@@ -2744,8 +2809,56 @@ ${listSales(w)}
 
 </div>
 
-`;
+<div class="grid two" style="margin-top:13px">
 
+<div class="card">
+
+<div class="section">
+<div>
+<h2>💵 Ingresos de la semana</h2>
+<p class="sub">${esc(w.label)} · ${esc(weekRangeLabel(w))}</p>
+</div>
+<span class="pill">${money(incomeForWeek(w))}</span>
+</div>
+
+${
+incomes.length
+? incomes.map(x=>itemIncome(x)).join('')
+: '<div class="empty">No hay ingresos registrados para esta semana.</div>'
+}
+
+</div>
+
+<div class="card">
+
+<div class="section">
+<div>
+<h2>💸 Gastos de la semana</h2>
+<p class="sub">${esc(w.label)} · ${esc(weekRangeLabel(w))}</p>
+</div>
+<span class="pill">${money(businessExpenses.reduce((s,x)=>s+n(x.amount),0))}</span>
+</div>
+
+${
+expenses.length
+? expenses.map(x=>expenseItem(x)).join('')
+: '<div class="empty">No hay gastos registrados para esta semana.</div>'
+}
+
+</div>
+
+</div>
+
+<div class="card" style="margin-top:13px">
+<div class="notice">
+📌 <b>Resumen de ${esc(w.label)}:</b>
+Ingresos ${money(incomeForWeek(w))} ·
+Gastos negocio ${money(businessExpenses.reduce((s,x)=>s+n(x.amount),0))} ·
+Gastos personales ${money(personalExpenses.reduce((s,x)=>s+n(x.amount),0))}
+</div>
+</div>
+
+`;
 }
 
 function listSales(w){
@@ -2810,15 +2923,11 @@ onclick="deleteSale('${x.id}')">
 function incomeView(){
 
 const w=selectedWeek();
-
-const list=
-state.income.filter(
-x=>
-x.weekId===w.id ||
-weekForDate(x.date)===w.start
-);
+const list=weekIncomeList(w);
 
 return `
+
+${searchWeekCard(w)}
 
 <div class="section">
 
@@ -2827,7 +2936,7 @@ return `
 </h2>
 
 <span class="pill">
-Total ${money(incomeForWeek(w))}
+${esc(weekRangeLabel(w))} · Total ${money(incomeForWeek(w))}
 </span>
 
 </div>
@@ -2896,10 +3005,11 @@ x=>
 value="${x.id}"
 ${x.id===w.id?'selected':''}>
 ${esc(x.label)}
-(${x.start})
+(${esc(weekRangeLabel(x))})
 </option>
 `
-).join('')}
+).join('')
+}
 
 </select>
 
@@ -2917,12 +3027,18 @@ Registrar ingreso
 
 <div class="card">
 
+<div class="section">
+<div>
+<h3 style="margin:0">Registros de ${esc(w.label)}</h3>
+<p class="sub">${esc(weekRangeLabel(w))}</p>
+</div>
+<span class="pill">${list.length} registro${list.length===1?'':'s'}</span>
+</div>
+
 ${
 list.length
 ?
-list.map(
-x=>itemIncome(x)
-).join('')
+list.map(x=>itemIncome(x)).join('')
 :
 '<div class="empty">Aún no hay ingresos registrados para esta semana.</div>'
 }
@@ -2983,19 +3099,24 @@ onclick="deleteIncome('${x.id}')">
 
 function expensesView(){
 
-const list=
-[...state.expenses]
-.sort(
-(a,b)=>b.date.localeCompare(a.date)
-);
+const w=selectedWeek();
+const list=weekExpenseList(w);
+const business=list.filter(x=>x.type==='business');
+const personal=list.filter(x=>x.type==='personal');
 
 return `
+
+${searchWeekCard(w)}
 
 <div class="section">
 
 <h2>
-💸 Gastos y retiros
+💸 Gastos de ${esc(w.label)}
 </h2>
+
+<span class="pill">
+${esc(weekRangeLabel(w))} · Negocio ${money(business.reduce((s,x)=>s+n(x.amount),0))}
+</span>
 
 </div>
 
@@ -3082,14 +3203,29 @@ Registrar gasto
 
 <div class="card">
 
+<div class="section">
+<div>
+<h3 style="margin:0">Registros de ${esc(w.label)}</h3>
+<p class="sub">${esc(weekRangeLabel(w))}</p>
+</div>
+<span class="pill">${list.length} registro${list.length===1?'':'s'}</span>
+</div>
+
 ${
 list.length
 ?
-list.map(
-x=>expenseItem(x)
-).join('')
+list.map(x=>expenseItem(x)).join('')
 :
-'<div class="empty">Sin gastos registrados.</div>'
+'<div class="empty">Sin gastos registrados en esta semana.</div>'
+}
+
+${
+list.length
+? `<div class="notice" style="margin-top:10px">
+💼 Negocio: <b>${money(business.reduce((s,x)=>s+n(x.amount),0))}</b>
+&nbsp; · &nbsp; 👨‍👩‍👧 Personal: <b>${money(personal.reduce((s,x)=>s+n(x.amount),0))}</b>
+</div>`
+:''
 }
 
 </div>
