@@ -1479,17 +1479,70 @@ return 'Fecha no disponible';
 }
 }
 
-function renderSessionsPanel(){
-if(!currentUser)return '<div class="empty">Inicia sesión para consultar tus dispositivos.</div>';
-if(!deviceSessions.length)return '<div class="empty">No hay información de sesiones todavía. Pulsa “Actualizar”.</div>';
-return deviceSessions.map(x=>{
+function sessionTimeAgo(v){
+if(!v)return 'Sin actividad registrada';
+const t=new Date(v).getTime();
+if(Number.isNaN(t))return 'Sin actividad registrada';
+let sec=Math.max(0,Math.floor((Date.now()-t)/1000));
+if(sec<60)return 'hace unos segundos';
+const min=Math.floor(sec/60);
+if(min<60)return `hace ${min} min`;
+const h=Math.floor(min/60);
+if(h<24)return `hace ${h} h`;
+const d=Math.floor(h/24);
+if(d<30)return `hace ${d} día${d===1?'':'s'}`;
+const m=Math.floor(d/30);
+return `hace ${m} mes${m===1?'':'es'}`;
+}
+
+function uniqueDeviceSessions(){
+const map=new Map();
+(deviceSessions||[]).forEach(x=>{
+const key=String(x.device_id||`${x.device_name||''}|${x.browser||''}|${x.os||''}|${x.device_type||''}`);
 const current=String(x.session_id)===String(currentSessionId);
 const active=Boolean(x.active)&&!x.revoked_at;
+const existing=map.get(key);
+if(!existing){map.set(key,{...x,_active:active,_current:current,_count:1});return;}
+existing._count++;
+const existingLast=new Date(existing.last_seen_at||existing.updated_at||0).getTime()||0;
+const candidateLast=new Date(x.last_seen_at||x.updated_at||0).getTime()||0;
+if(current || (!existing._current && active && !existing._active) || candidateLast>existingLast){
+Object.assign(existing,x);
+}
+existing._active=existing._active||active;
+existing._current=existing._current||current;
+});
+return Array.from(map.values()).sort((a,b)=>{
+if(a._current!==b._current)return a._current?-1:1;
+if(a._active!==b._active)return a._active?-1:1;
+return (new Date(b.last_seen_at||b.updated_at||0).getTime()||0)-(new Date(a.last_seen_at||a.updated_at||0).getTime()||0);
+});
+}
+
+function toggleSessionsPanel(){
+const body=document.getElementById('sessionsPanelBody');
+const btn=document.getElementById('sessionsToggle');
+if(!body||!btn)return;
+const open=body.hidden;
+body.hidden=!open;
+btn.textContent=open?'Ocultar dispositivos':'Ver dispositivos';
+btn.setAttribute('aria-expanded',String(open));
+if(open&&currentUser&&!deviceSessions.length)loadDeviceSessions(true);
+}
+
+function renderSessionsPanel(){
+if(!currentUser)return '<div class="empty">Inicia sesión para consultar tus dispositivos.</div>';
+const devices=uniqueDeviceSessions();
+if(!devices.length)return '<div class="empty">No hay información de dispositivos todavía.</div>';
+return devices.map(x=>{
+const current=Boolean(x._current);
+const active=Boolean(x._active);
+const last=x.last_seen_at||x.updated_at;
 return `<div class="session-item">
 <div class="session-main">
 <div class="session-title">${esc(x.device_name||'Dispositivo')} ${current?'<span class="session-current">· ESTE DISPOSITIVO</span>':''}</div>
-<div class="session-meta">${esc(x.browser||'Navegador')} · ${esc(x.os||'Sistema')} · ${esc(x.device_type||'Equipo')}<br>Última actividad: ${esc(formatSessionDate(x.last_seen_at||x.updated_at))}<br>Inicio: ${esc(formatSessionDate(x.created_at))}</div>
-<div class="${active?'session-current':'session-revoked'}">${active?'● Sesión activa':'● Sesión cerrada'}</div>
+<div class="session-meta">${esc(x.browser||'Navegador')} · ${esc(x.os||'Sistema')} · ${esc(x.device_type||'Equipo')}<br>${active?'Activo':'Sin sesión activa'} · ${esc(sessionTimeAgo(last))}<br>Última actividad: ${esc(formatSessionDate(last))}</div>
+<div class="${active?'session-current':'session-revoked'}">${active?'● Dispositivo activo':'● Sin sesión activa'}</div>
 </div>
 <div class="session-actions">${current
 ?'<button class="btn secondary small" onclick="logout()">Cerrar esta</button>'
@@ -3764,12 +3817,18 @@ ${companies.length<=1?'<small class="sub" style="display:block;margin-top:8px">D
 
 <div class="card">
 <h3>📱 Sesiones y dispositivos</h3>
-<p class="sub">Aquí puedes ver dónde está abierta esta cuenta y cerrar sesiones de otros equipos. El botón se actualiza con la información más reciente de Supabase.</p>
+<p class="sub">Los dispositivos se agrupan para no repetir el mismo equipo. Pulsa para consultar dónde está activa la cuenta.</p>
+<div class="row" style="margin-bottom:10px;align-items:center">
+<button id="sessionsToggle" class="btn secondary small" onclick="toggleSessionsPanel()" aria-expanded="false">Ver dispositivos</button>
+<span class="sub" style="margin:0">Se muestra un solo registro por dispositivo.</span>
+</div>
+<div id="sessionsPanelBody" hidden>
 <div class="row" style="margin-bottom:10px">
 <button class="btn secondary small" onclick="loadDeviceSessions(true)">🔄 Actualizar</button>
 <button class="btn secondary small" onclick="signOutOtherSessions()">🔐 Cerrar las demás</button>
 </div>
 <div id="sessionsPanel" class="session-grid">${renderSessionsPanel()}</div>
+</div>
 </div>
 
 <div class="card">
