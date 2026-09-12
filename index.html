@@ -647,6 +647,14 @@ button:active,.btn:active,.nav button:active{transform:translateY(1px) scale(.97
 .week-picker select{width:100%;min-width:0}
 .week-header-actions .btn{white-space:nowrap}
 }
+
+.chart-large{min-height:360px}
+.chart-empty{display:flex;align-items:center;justify-content:center;min-height:260px}
+.chart-empty-message{margin-top:8px}
+@media(max-width:700px){
+.chart-large{min-height:280px}
+}
+
 </style>
 </head>
 
@@ -1257,25 +1265,69 @@ return 'Fecha no disponible';
 }
 }
 
+function groupedDeviceSessions(){
+const groups=new Map();
+for(const x of (deviceSessions||[])){
+const key=String(x.device_id||x.device_name||x.browser||'dispositivo').trim().toLowerCase();
+if(!groups.has(key))groups.set(key,[]);
+groups.get(key).push(x);
+}
+return [...groups.values()].map(list=>{
+list.sort((a,b)=>String(b.last_seen_at||b.updated_at||b.created_at||'').localeCompare(String(a.last_seen_at||a.updated_at||a.created_at||'')));
+const current=list.some(x=>String(x.session_id)===String(currentSessionId));
+const active=list.some(x=>Boolean(x.active)&&!x.revoked_at);
+return {
+...list[0],
+_sessions:list,
+current,
+active
+};
+}).sort((a,b)=>{
+if(a.current&&!b.current)return -1;
+if(!a.current&&b.current)return 1;
+return String(b.last_seen_at||'').localeCompare(String(a.last_seen_at||''));
+});
+}
+
 function renderSessionsPanel(){
 if(!currentUser)return '<div class="empty">Inicia sesión para consultar tus dispositivos.</div>';
-if(!deviceSessions.length)return '<div class="empty">No hay información de sesiones todavía. Pulsa “Actualizar”.</div>';
-return deviceSessions.map(x=>{
-const current=String(x.session_id)===String(currentSessionId);
-const active=Boolean(x.active)&&!x.revoked_at;
+const devices=groupedDeviceSessions();
+if(!devices.length)return '<div class="empty">No hay dispositivos registrados todavía. Pulsa “Ver dispositivos” para actualizar.</div>';
+
+return devices.map(x=>{
+const active=x.active;
+const sessionIds=x._sessions.map(s=>String(s.session_id)).filter(Boolean);
 return `<div class="session-item">
 <div class="session-main">
-<div class="session-title">${esc(x.device_name||'Dispositivo')} ${current?'<span class="session-current">· ESTE DISPOSITIVO</span>':''}</div>
+<div class="session-title">${esc(x.device_name||'Dispositivo')} ${x.current?'<span class="session-current">· ESTE DISPOSITIVO</span>':''}</div>
 <div class="session-meta">${esc(x.browser||'Navegador')} · ${esc(x.os||'Sistema')} · ${esc(x.device_type||'Equipo')}<br>Última actividad: ${esc(formatSessionDate(x.last_seen_at||x.updated_at))}<br>Inicio: ${esc(formatSessionDate(x.created_at))}</div>
 <div class="${active?'session-current':'session-revoked'}">${active?'● Sesión activa':'● Sesión cerrada'}</div>
 </div>
-<div class="session-actions">${current
+<div class="session-actions">${x.current
 ?'<button class="btn secondary small" onclick="logout()">Cerrar esta</button>'
 :active
-?`<button class="btn red small" onclick="revokeDeviceSession('${esc(x.session_id)}')">Cerrar sesión</button>`
+?`<button class="btn red small" onclick="revokeDeviceSessions('${esc(encodeURIComponent(JSON.stringify(sessionIds)))}')">Cerrar sesión</button>`
 :''}</div>
 </div>`;
 }).join('');
+}
+
+async function revokeDeviceSessions(encodedIds){
+let ids=[];
+try{ids=JSON.parse(decodeURIComponent(encodedIds||''))||[];}catch(e){}
+ids=ids.filter(id=>String(id)!==String(currentSessionId));
+if(!ids.length)return;
+if(!confirm('¿Cerrar la sesión de este dispositivo?'))return;
+try{
+for(const id of ids){
+const {error}=await sb.rpc('gemelitas_revoke_session',{p_session_id:id});
+if(error)throw error;
+}
+await loadDeviceSessions(true);
+}catch(e){
+console.error(e);
+alert('No se pudo cerrar la sesión de ese dispositivo.');
+}
 }
 
 async function registerCurrentSession(session){
@@ -1390,7 +1442,7 @@ document.body.dataset.theme=appearance.theme;
 document.documentElement.style.setProperty('--fs',appearance.font+'px');
 
 const brand=document.getElementById('brandName');
-if(brand)brand.textContent=state.settings.name||'Empresa';
+if(brand)brand.textContent='GEMELITAS A&A S.A.C.';
 
 const company=companies.find(c=>c.id===currentCompanyId);
 if(company)company.name=state.settings.name||company.name||'Empresa';
@@ -1761,12 +1813,12 @@ return `
 </div>`;
 }
 
-const totalSales=globalMetrics.reduce((s,x)=>s+x.sales,0);
-const totalIncome=globalMetrics.reduce((s,x)=>s+x.income,0);
-const totalExpenses=globalMetrics.reduce((s,x)=>s+x.expenses,0);
-const totalPersonal=globalMetrics.reduce((s,x)=>s+x.personal,0);
-const totalProfit=globalMetrics.reduce((s,x)=>s+x.profit,0);
-const totalCash=globalMetrics.reduce((s,x)=>s+x.cash,0);
+const totalSales=globalMetrics.reduce((s,x)=>s+n(x.sales),0);
+const totalIncome=globalMetrics.reduce((s,x)=>s+n(x.income),0);
+const totalExpenses=globalMetrics.reduce((s,x)=>s+n(x.expenses),0);
+const totalPersonal=globalMetrics.reduce((s,x)=>s+n(x.personal),0);
+const totalProfit=globalMetrics.reduce((s,x)=>s+n(x.profit),0);
+const totalCash=globalMetrics.reduce((s,x)=>s+n(x.cash),0);
 const count=globalMetrics.length;
 
 const rows=globalMetrics.slice().sort((a,b)=>b.sales-a.sales).map(x=>`
@@ -1803,22 +1855,32 @@ return `
 <div class="card kpi"><label>Caja estimada</label><strong>${money(totalCash)}</strong><small>Consolidado</small></div>
 </div>
 
-<div class="grid two" style="margin-top:13px">
-<div class="card">
+<div class="card" style="margin-top:13px">
 <div class="section">
-<div><h2>📈 Crecimiento general</h2><p class="sub">Evolución consolidada de todas las empresas por semana.</p></div>
-<span class="pill">Todas las empresas</span>
+<div>
+<h2>📈 Crecimiento y rendimiento</h2>
+<p class="sub">Consolidado de todas las empresas o detalle de una empresa, sin entrar a ella.</p>
 </div>
-<div class="chart"><canvas id="globalGrowthChart"></canvas></div>
+<div class="field" style="min-width:210px;margin:0">
+<label style="display:none">Empresa</label>
+<select id="globalCompanyFilter" onchange="drawGlobalCharts(this.value)">
+<option value="all">🌐 Todas las empresas</option>
+${globalMetrics.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}
+</select>
+</div>
+</div>
+<div class="chart chart-large"><canvas id="globalGrowthChart"></canvas></div>
 </div>
 
-<div class="card">
+<div class="card" style="margin-top:13px">
 <div class="section">
-<div><h2>💸 Gastos del conjunto</h2><p class="sub">Distribución de los gastos del conjunto de empresas.</p></div>
-<span class="pill">Consolidado</span>
+<div>
+<h2>💸 Gastos del conjunto</h2>
+<p class="sub">Distribución de gastos según la selección de empresa.</p>
+</div>
+<span id="globalExpenseBadge" class="pill">Consolidado</span>
 </div>
 <div class="chart"><canvas id="globalExpenseChart"></canvas></div>
-</div>
 </div>
 
 <div class="card" style="margin-top:13px">
@@ -1840,25 +1902,34 @@ return `
 
 }
 
-function drawGlobalCharts(){
+function drawGlobalCharts(selectedId='all'){
 if(typeof Chart==='undefined')return;
-if(charts.globalGrowth)charts.globalGrowth.destroy();
-if(charts.globalExpense)charts.globalExpense.destroy();
+
+if(charts.globalGrowth){try{charts.globalGrowth.destroy();}catch(e){}}
+if(charts.globalExpense){try{charts.globalExpense.destroy();}catch(e){}}
 
 const growth=document.getElementById('globalGrowthChart');
 const expense=document.getElementById('globalExpenseChart');
 if(!growth||!expense)return;
 
+let selected=globalMetrics;
+if(selectedId&&selectedId!=='all'){
+selected=globalMetrics.filter(x=>String(x.id)===String(selectedId));
+}
+
 const weekly={};
 const cats={};
-for(const m of globalMetrics){
+
+for(const m of selected){
 for(const [start,v] of Object.entries(m.weekly||{})){
 if(!weekly[start])weekly[start]={sales:0,income:0,expenses:0};
 weekly[start].sales+=n(v.sales);
 weekly[start].income+=n(v.income);
 weekly[start].expenses+=n(v.expenses);
 }
-for(const [cat,val] of Object.entries(m.expenseCategories||{}))cats[cat]=(cats[cat]||0)+n(val);
+for(const [cat,val] of Object.entries(m.expenseCategories||{})){
+cats[cat]=(cats[cat]||0)+n(val);
+}
 }
 
 const starts=Object.keys(weekly).sort();
@@ -1866,736 +1937,93 @@ const labels=starts.map(start=>{
 const d=parseDateSafe(start);
 return d?d.toLocaleDateString('es-PE',{day:'2-digit',month:'short'}):start;
 });
-const cs=getComputedStyle(document.body);
-const a=cs.getPropertyValue('--accent').trim()||'#39d98a';
-const a2=cs.getPropertyValue('--accent2').trim()||'#6d8cff';
-const red=cs.getPropertyValue('--red').trim()||'#ff6b7a';
+
+const muted=getComputedStyle(document.body).getPropertyValue('--muted').trim()||'#91a4ba';
+const line=getComputedStyle(document.body).getPropertyValue('--line').trim()||'#263c58';
+const accent=getComputedStyle(document.body).getPropertyValue('--accent').trim()||'#39d98a';
+const accent2=getComputedStyle(document.body).getPropertyValue('--accent2').trim()||'#6d8cff';
+const red=getComputedStyle(document.body).getPropertyValue('--red').trim()||'#ff6b7a';
 const blue='#4f8cff';
-const muted=cs.getPropertyValue('--muted').trim()||'#91a4ba';
-const line=cs.getPropertyValue('--line').trim()||'#263c58';
+
 Chart.defaults.color=muted;
 Chart.defaults.font.family='-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif';
 Chart.defaults.font.size=12;
-const tick=v=>{v=n(v);return v>=1000?'S/ '+(v/1000).toFixed(0)+' mil':'S/ '+v.toFixed(0)};
 
-charts.globalGrowth=new Chart(growth,{type:'line',data:{labels,datasets:[
-{label:'Ventas',data:starts.map(x=>weekly[x].sales),borderColor:a,backgroundColor:a+'22',fill:true,tension:.38,borderWidth:3,pointRadius:3},
-{label:'Ingresos',data:starts.map(x=>weekly[x].income),borderColor:blue,tension:.38,borderWidth:2.5,pointRadius:2.5},
-{label:'Gastos',data:starts.map(x=>weekly[x].expenses),borderColor:red,tension:.38,borderWidth:2.5,pointRadius:2.5},
-{label:'Utilidad',data:starts.map(x=>weekly[x].sales-weekly[x].expenses),borderColor:a2,tension:.38,borderWidth:2.5,pointRadius:2.5}
-]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},animation:{duration:550},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+money(c.parsed.y)}}},scales:{x:{grid:{display:false},border:{display:false}},y:{beginAtZero:true,border:{display:false},grid:{color:line+'55'},ticks:{callback:tick}}}}});
+const tick=v=>{
+v=n(v);
+if(Math.abs(v)>=1000000)return 'S/ '+(v/1000000).toFixed(1)+' M';
+if(Math.abs(v)>=1000)return 'S/ '+(v/1000).toFixed(0)+' mil';
+return 'S/ '+v.toFixed(0);
+};
 
-const entries=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
-charts.globalExpense=new Chart(expense,{type:'doughnut',data:{labels:entries.length?entries.map(x=>x[0]):['Sin gastos registrados'],datasets:[{data:entries.length?entries.map(x=>x[1]):[1],backgroundColor:entries.length?[a,blue,red,a2,'#f7ba55','#8bd3dd','#c084fc','#fb7185','#94a3b8','#34d399'].slice(0,entries.length):['#94a3b8'],borderWidth:3,borderColor:cs.getPropertyValue('--card').trim()||'#fff',hoverOffset:7}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',animation:{duration:550},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{callbacks:{label:c=>' '+c.label+': '+money(c.parsed)}}}}});
-}
-
-async function openCompanyFromGlobal(id){
-
-if(!id||!currentUser)
+if(!starts.length){
+const ctx=growth.getContext('2d');
+ctx.clearRect(0,0,growth.width,growth.height);
+const ec=expense.getContext('2d');
+ec.clearRect(0,0,expense.width,expense.height);
+const parent=growth.parentElement;
+if(parent)parent.classList.add('chart-empty');
+growth.insertAdjacentHTML('afterend','<div class="empty chart-empty-message">📊 Aún no hay semanas con datos suficientes para mostrar crecimiento.</div>');
+expense.insertAdjacentHTML('afterend','<div class="empty chart-empty-message">💸 Aún no hay gastos de negocio registrados.</div>');
 return;
-
-if(localDirty)await syncNow();
-await loadCompany(id);
-
-state.view='dashboard';
-
-try{localStorage.setItem(
-activeCompanyStorageKey(),
-currentCompanyId
-);}catch(e){}
-
-render();
-
 }
 
-function dashboard(){
-
-const ws=rangeWeeks();
-
-const sold=
-ws.reduce(
-(s,w)=>s+salesTotal(w),
-0
-);
-
-const inc=
-ws.reduce(
-(s,w)=>s+incomeForWeek(w),
-0
-);
-
-const bus=
-ws.reduce(
-(s,w)=>s+expensesForWeek(w),
-0
-);
-
-const per=
-ws.reduce(
-(s,w)=>s+expensesForWeek(w,'personal'),
-0
-);
-
-const pend=
-ws.reduce(
-(s,w)=>s+pendingWeek(w),
-0
-);
-
-const profit=
-sold-bus;
-
-const cash=
-n(state.settings.cash)+
-state.income.reduce(
-(s,x)=>s+n(x.amount),
-0
-)-
-state.expenses.reduce(
-(s,x)=>s+n(x.amount),
-0
-);
-
-return `
-
-<div class="card hero">
-
-<div class="section" style="margin:0">
-
-<div>
-
-<div class="dashboardHeroBrand">
-<img src="" data-company-logo="1" alt="Logo Las Gemelitas A&A S.A.C.">
-<div>
-<div class="pill">
-CONTROL CENTRALIZADO
-</div>
-
-<h2 style="font-size:1.5rem;margin-top:10px">
-Tu negocio, con visión de crecimiento 🚀
-</h2>
-
-<p class="sub">
-Ventas, rentabilidad, caja y tendencias en un solo lugar.
-</p>
-</div>
-</div>
-
-</div>
-
-<div class="period">
-
-${[
-'semana',
-'mes',
-'anio',
-'todo'
-].map(
-p=>
-`
-<button
-class="${state.period===p?'active':''}"
-onclick="state.period='${p}';render()">
-${p==='anio'
-?'Año'
-:p[0].toUpperCase()+p.slice(1)}
-</button>
-`
-).join('')}
-
-</div>
-
-</div>
-
-</div>
-
-<div class="grid kpis" style="margin-top:13px">
-
-<div class="card kpi">
-
-<label>Ventas</label>
-
-<strong class="green">
-${money(sold)}
-</strong>
-
-<small>
-Menús + ventas adicionales
-</small>
-
-</div>
-
-<div class="card kpi">
-
-<label>Ingresos recibidos</label>
-
-<strong class="blue">
-${money(inc)}
-</strong>
-
-<small>
-Dinero realmente registrado
-</small>
-
-</div>
-
-<div class="card kpi">
-
-<label>Por cobrar</label>
-
-<strong class="goldtxt">
-${money(pend)}
-</strong>
-
-<small>
-Referencia automática
-</small>
-
-</div>
-
-<div class="card kpi">
-
-<label>Gastos negocio</label>
-
-<strong class="redtxt">
-${money(bus)}
-</strong>
-
-<small>
-Operación real
-</small>
-
-</div>
-
-<div class="card kpi">
-
-<label>Utilidad estimada</label>
-
-<strong class="green">
-${money(profit)}
-</strong>
-
-<small>
-Ventas − gastos negocio
-</small>
-
-</div>
-
-<div class="card kpi">
-
-<label>Caja disponible</label>
-
-<strong>
-${money(cash)}
-</strong>
-
-<small>
-Caja estimada
-</small>
-
-</div>
-
-</div>
-
-<div class="grid two" style="margin-top:13px">
-
-<div class="card">
-
-<div class="section">
-
-<h2>
-📈 Crecimiento del negocio
-</h2>
-
-<span class="pill">
-Visión ejecutiva
-</span>
-
-</div>
-
-<div class="chart">
-<canvas id="salesChart"></canvas>
-</div>
-
-</div>
-
-<div class="card">
-
-<div class="section">
-
-<h2>
-💸 ¿En qué se está gastando?
-</h2>
-
-</div>
-
-<div class="chart">
-<canvas id="expenseChart"></canvas>
-</div>
-
-</div>
-
-</div>
-
-<div class="card" style="margin-top:13px">
-
-<div class="notice">
-
-👨‍👩‍👧 Gastos personales registrados:
-<b>${money(per)}</b>.
-
-Se muestran por separado para no alterar
-la rentabilidad real del negocio.
-
-</div>
-
-</div>
-
-`;
-
+const growthMsg=growth.parentElement?.querySelector('.chart-empty-message');
+if(growthMsg)growthMsg.remove();
+const expenseMsg=expense.parentElement?.querySelector('.chart-empty-message');
+if(expenseMsg)expenseMsg.remove();
+
+charts.globalGrowth=new Chart(growth,{
+type:'line',
+data:{
+labels,
+datasets:[
+{label:'Ventas',data:starts.map(x=>weekly[x].sales),borderColor:accent,backgroundColor:accent+'22',fill:true,tension:.38,borderWidth:3,pointRadius:3,pointHoverRadius:6},
+{label:'Ingresos',data:starts.map(x=>weekly[x].income),borderColor:blue,tension:.38,borderWidth:2.5,pointRadius:2.5,pointHoverRadius:5},
+{label:'Gastos',data:starts.map(x=>weekly[x].expenses),borderColor:red,tension:.38,borderWidth:2.5,pointRadius:2.5,pointHoverRadius:5},
+{label:'Utilidad',data:starts.map(x=>weekly[x].sales-weekly[x].expenses),borderColor:accent2,tension:.38,borderWidth:2.5,pointRadius:2.5,pointHoverRadius:5}
+]
+},
+options:{
+responsive:true,maintainAspectRatio:false,
+interaction:{mode:'index',intersect:false},
+animation:{duration:650,easing:'easeOutQuart'},
+plugins:{
+legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:16,boxWidth:8}},
+tooltip:{backgroundColor:'rgba(20,25,35,.94)',titleColor:'#fff',bodyColor:'#fff',cornerRadius:12,padding:12,callbacks:{label:c=>' '+c.dataset.label+': '+money(c.parsed.y)}}
+},
+scales:{
+x:{grid:{display:false},border:{display:false},ticks:{maxRotation:0}},
+y:{beginAtZero:true,border:{display:false},grid:{color:line+'55',drawTicks:false},ticks:{callback:tick,padding:8}}
 }
-
-function weekEndDate(start){
-const d=parseDateSafe(start);
-if(!d)return null;
-d.setDate(d.getDate()+6);
-return d.toISOString().slice(0,10);
 }
+});
 
-function weekDateLabel(w){
-if(!w)return '';
-const end=weekEndDate(w.start);
-const a=parseDateSafe(w.start);
-const b=parseDateSafe(end);
-if(!a||!b)return '';
-const f=d=>d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
-return `${f(a)} al ${f(b)}`;
+const catEntries=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+charts.globalExpense=new Chart(expense,{
+type:'doughnut',
+data:{
+labels:catEntries.length?catEntries.map(x=>x[0]):['Sin gastos registrados'],
+datasets:[{
+data:catEntries.length?catEntries.map(x=>x[1]):[1],
+backgroundColor:catEntries.length?[accent,blue,red,accent2,'#f7ba55','#8bd3dd','#c084fc','#fb7185','#94a3b8','#34d399'].slice(0,catEntries.length):['#94a3b8'],
+borderWidth:3,
+borderColor:getComputedStyle(document.body).getPropertyValue('--card').trim()||'#fff',
+hoverOffset:7
+}]
+},
+options:{
+responsive:true,maintainAspectRatio:false,cutout:'68%',
+animation:{duration:700,easing:'easeOutQuart'},
+plugins:{
+legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:16,boxWidth:8}},
+tooltip:{backgroundColor:'rgba(20,25,35,.94)',titleColor:'#fff',bodyColor:'#fff',cornerRadius:12,padding:12,callbacks:{label:c=>' '+c.label+': '+money(c.parsed)}}
 }
-
-function compactWeekSelector(w){
-const weeks=[...state.weeks]
-.filter(x=>x&&x.start)
-.sort((a,b)=>String(a.start).localeCompare(String(b.start)));
-return `
-<div class="week-picker">
-<label>Semana</label>
-<select aria-label="Seleccionar semana" onchange="selectWeekFromPicker(this.value)">
-${weeks.map(x=>`<option value="${esc(x.id)}" ${String(x.id)===String(w.id)?'selected':''}>${esc(x.label)} · ${esc(weekDateLabel(x))}</option>`).join('')}
-</select>
-</div>`;
 }
+});
 
-function selectWeekFromPicker(id){
-const w=state.weeks.find(x=>String(x.id)===String(id));
-if(!w)return;
-state.currentWeek=w.start;
-render();
-}
-
-function weekView(){
-
-const w=selectedWeek();
-
-return `
-
-<div class="section week-header">
-
-<div>
-<h2>📅 Control de ${esc(w.label)}</h2>
-<p class="sub">${esc(weekDateLabel(w))}</p>
-</div>
-
-<div class="row week-header-actions">
-${compactWeekSelector(w)}
-<button class="btn secondary small" onclick="newWeek()">＋ Nueva semana</button>
-</div>
-
-</div>
-
-<div class="card">
-
-<div class="form">
-
-<div class="field">
-<label>Nombre semana</label>
-<input value="${esc(w.label)}" onchange="wedit('label',this.value)">
-</div>
-
-<div class="field">
-<label>Precio menú empresa</label>
-<input type="number" step=".01" value="${w.price}" onchange="wedit('price',this.value)">
-</div>
-
-</div>
-
-<div class="tablewrap">
-<table>
-<thead><tr><th>Día</th><th>Menús empresa</th><th>Total</th></tr></thead>
-<tbody>
-${DAYS.map(d=>`
-<tr>
-<td>${d}</td>
-<td><input type="number" min="0" value="${n(w.days?.[d])}" onchange="dayedit('${d}',this.value)"></td>
-<td>${money(n(w.days?.[d])*n(w.price))}</td>
-</tr>`).join('')}
-</tbody>
-</table>
-</div>
-
-<div class="section">
-<h2>Total empresa: <span class="green">${money(weekTotal(w))}</span></h2>
-<span class="pill">${DAYS.reduce((s,d)=>s+n(w.days?.[d]),0)} menús</span>
-</div>
-
-<div class="notice">Este total sirve como referencia para revisar cuánto corresponde cobrar a la empresa. El dinero recibido se registra aparte en <b>Ingresos</b>.</div>
-
-</div>
-
-<div class="card">
-
-<div class="section">
-<h2>➕ Ventas adicionales</h2>
-<span>Total: <b>${money(extrasForWeek(w))}</b></span>
-</div>
-
-<div class="form">
-<div class="field"><label>Fecha</label><input type="date" id="sdate" value="${today()}"></div>
-<div class="field"><label>Producto</label><input id="sprod" placeholder="Menú, gaseosa..."></div>
-<div class="field"><label>Cantidad</label><input id="sqty" type="number" value="1"></div>
-<div class="field"><label>Precio</label><input id="sprice" type="number" step=".01" placeholder="0.00"></div>
-<button class="btn" onclick="addSale()">Agregar</button>
-</div>
-
-${listSales(w)}
-
-</div>
-
-`;
-}
-
-function listSales(w){
-
-const a=
-state.sales.filter(
-x=>weekForDate(x.date)===w.start
-);
-
-if(!a.length)
-return '<div class="empty">Sin ventas adicionales.</div>';
-
-return a.map(
-x=>
-`
-<div class="item">
-
-<div>
-
-<b>
-${esc(x.product)}
-</b>
-
-<small>
-${x.date} ·
-${x.qty} ×
-${money(x.price)}
-</small>
-
-</div>
-
-<div>
-
-<b>
-${money(x.qty*x.price)}
-</b>
-
-<div class="actions">
-
-<button
-class="btn secondary small"
-onclick="editSale('${x.id}')">
-✏️
-</button>
-
-<button
-class="btn secondary small"
-onclick="deleteSale('${x.id}')">
-🗑
-</button>
-
-</div>
-
-</div>
-
-</div>
-`
-).join('');
-
-}
-
-function incomeView(){
-
-const w=selectedWeek();
-const list=state.income.filter(x=>x.weekId===w.id||weekForDate(x.date)===w.start);
-
-return `
-
-<div class="section week-module-header">
-<div>
-<h2>💵 Ingresos</h2>
-<p class="sub">Consulta los ingresos registrados en la semana seleccionada.</p>
-</div>
-<div class="row week-header-actions">${compactWeekSelector(w)}</div>
-</div>
-
-<div class="card">
-<div class="section">
-<div><h3 style="margin:0">${esc(w.label)}</h3><p class="sub">${esc(weekDateLabel(w))}</p></div>
-<span class="pill">Total ${money(incomeForWeek(w))}</span>
-</div>
-
-<div class="notice">Registra aquí únicamente el dinero que realmente ingresó. Ejemplo: <b>Empresa pagó S/ 3,000</b>.</div>
-
-<div class="form" style="margin-top:12px">
-<div class="field"><label>Fecha</label><input type="date" id="idate" value="${today()}"></div>
-<div class="field"><label>Concepto</label><input id="idesc" placeholder="Empresa - pago semana"></div>
-<div class="field"><label>Monto recibido</label><input id="iamt" type="number" step=".01"></div>
-<div class="field"><label>Semana</label><select id="iweek">${state.weeks.map(x=>`<option value="${esc(x.id)}" ${x.id===w.id?'selected':''}>${esc(x.label)} · ${esc(weekDateLabel(x))}</option>`).join('')}</select></div>
-<button class="btn" onclick="addIncome()">Registrar ingreso</button>
-</div>
-</div>
-
-<div class="card">
-<div class="section"><div><h3 style="margin:0">Registros de ${esc(w.label)}</h3><p class="sub">${esc(weekDateLabel(w))}</p></div><span class="pill">${list.length} registro${list.length===1?'':'s'}</span></div>
-${list.length?list.map(x=>itemIncome(x)).join(''):'<div class="empty">Aún no hay ingresos registrados para esta semana.</div>'}
-</div>
-
-`;
-}
-
-function itemIncome(x){
-
-return `
-
-<div class="item">
-
-<div>
-
-<b>
-${esc(x.description||'Ingreso')}
-</b>
-
-<small>
-${x.date}
-</small>
-
-</div>
-
-<div>
-
-<b class="green">
-${money(x.amount)}
-</b>
-
-<div class="actions">
-
-<button
-class="btn secondary small"
-onclick="editIncome('${x.id}')">
-✏️
-</button>
-
-<button
-class="btn secondary small"
-onclick="deleteIncome('${x.id}')">
-🗑
-</button>
-
-</div>
-
-</div>
-
-</div>
-
-`;
-
-}
-
-function expensesView(){
-
-const w=selectedWeek();
-const list=[...state.expenses].filter(x=>weekForDate(x.date)===w.start).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-const business=list.filter(x=>x.type==='business');
-const personal=list.filter(x=>x.type==='personal');
-
-return `
-
-<div class="section week-module-header">
-<div>
-<h2>💸 Gastos y retiros</h2>
-<p class="sub">Consulta los gastos registrados en la semana seleccionada.</p>
-</div>
-<div class="row week-header-actions">${compactWeekSelector(w)}</div>
-</div>
-
-<div class="card">
-<div class="section">
-<div><h3 style="margin:0">${esc(w.label)}</h3><p class="sub">${esc(weekDateLabel(w))}</p></div>
-<span class="pill">Negocio ${money(business.reduce((s,x)=>s+n(x.amount),0))}</span>
-</div>
-
-<div class="form">
-<div class="field"><label>Fecha</label><input id="edate" type="date" value="${today()}"></div>
-<div class="field"><label>Tipo</label><select id="etype"><option value="business">Negocio</option><option value="personal">Personal / Familiar</option></select></div>
-<div class="field"><label>Categoría</label><select id="ecat">${CATS.map(c=>`<option>${c}</option>`).join('')}</select></div>
-<div class="field"><label>Monto</label><input id="eamt" type="number" step=".01"></div>
-<div class="field"><label>Descripción</label><input id="edesc" placeholder="Detalle opcional"></div>
-<button class="btn red" onclick="addExpense()">Registrar gasto</button>
-</div>
-</div>
-
-<div class="card">
-<div class="section"><div><h3 style="margin:0">Registros de ${esc(w.label)}</h3><p class="sub">${esc(weekDateLabel(w))}</p></div><span class="pill">${list.length} registro${list.length===1?'':'s'}</span></div>
-${list.length?list.map(x=>expenseItem(x)).join(''):'<div class="empty">Sin gastos registrados en esta semana.</div>'}
-${list.length?`<div class="notice" style="margin-top:10px">💼 Negocio: <b>${money(business.reduce((s,x)=>s+n(x.amount),0))}</b> · 👨‍👩‍👧 Personal: <b>${money(personal.reduce((s,x)=>s+n(x.amount),0))}</b></div>`:''}
-</div>
-
-`;
-}
-
-function expenseItem(x){
-
-return `
-
-<div class="item">
-
-<div>
-
-<b>
-${esc(x.description||'Gasto')}
-</b>
-
-<small>
-${x.date} ·
-${esc(x.category)} ·
-${x.type==='personal'
-?'Personal'
-:'Negocio'}
-</small>
-
-</div>
-
-<div>
-
-<b class="redtxt">
-${money(x.amount)}
-</b>
-
-<div class="actions">
-
-<button
-class="btn secondary small"
-onclick="editExpense('${x.id}')">
-✏️
-</button>
-
-<button
-class="btn secondary small"
-onclick="deleteExpense('${x.id}')">
-🗑
-</button>
-
-</div>
-
-</div>
-
-</div>
-
-`;
-
-}
-
-function notesView(){
-
-return `
-
-<div class="section">
-
-<h2>
-📝 Notas rápidas
-</h2>
-
-</div>
-
-<div class="card">
-
-<div class="form">
-
-<div
-class="field"
-style="grid-column:span 3">
-
-<label>
-Nota
-</label>
-
-<input
-id="noteText"
-placeholder="Ej: Empresa aún debe confirmar el pago..."
->
-
-</div>
-
-<button
-class="btn"
-onclick="addNote()">
-Guardar nota
-</button>
-
-</div>
-
-</div>
-
-<div class="card">
-
-${
-state.notes.length
-?
-state.notes.map(
-x=>
-`
-<div class="item">
-
-<div>
-
-📝 ${esc(x.text)}
-
-<small>
-${x.date}
-</small>
-
-</div>
-
-<div class="actions">
-
-<button
-class="btn secondary small"
-onclick="deleteNote('${x.id}')">
-🗑 Borrar
-</button>
-
-</div>
-
-</div>
-`
-).join('')
-:
-'<div class="empty">No hay notas pendientes.</div>'
-}
-
-</div>
-
-`;
-
+const badge=document.getElementById('globalExpenseBadge');
+if(badge)badge.textContent=selectedId==='all'?'Consolidado':(selected[0]?.name||'Empresa');
 }
 
 function reports(){
@@ -2687,6 +2115,16 @@ ${money(pendingWeek(w))}
 
 `;
 
+}
+
+function toggleSessionsPanel(){
+const wrap=document.getElementById('sessionsPanelWrap');
+if(!wrap)return;
+const opening=wrap.style.display==='none'||!wrap.style.display;
+wrap.style.display=opening?'block':'none';
+const btn=wrap.parentElement?.querySelector('.section .btn');
+if(btn)btn.textContent=opening?'📱 Ocultar dispositivos':'📱 Ver dispositivos';
+if(opening)loadDeviceSessions(true);
 }
 
 function settingsView(){
@@ -2869,13 +2307,20 @@ ${companies.length<=1?'<small class="sub" style="display:block;margin-top:8px">D
 </div>
 
 <div class="card">
-<h3>📱 Sesiones y dispositivos</h3>
-<p class="sub">Aquí puedes ver dónde está abierta esta cuenta y cerrar sesiones de otros equipos. El botón se actualiza con la información más reciente de Supabase.</p>
+<div class="section" style="margin:0">
+<div>
+<h3 style="margin:0">📱 Sesiones y dispositivos</h3>
+<p class="sub">Administra dónde está abierta tu cuenta. Cada dispositivo aparece una sola vez.</p>
+</div>
+<button class="btn secondary small" onclick="toggleSessionsPanel()">📱 Ver dispositivos</button>
+</div>
+<div id="sessionsPanelWrap" style="display:none;margin-top:12px">
 <div class="row" style="margin-bottom:10px">
 <button class="btn secondary small" onclick="loadDeviceSessions(true)">🔄 Actualizar</button>
 <button class="btn secondary small" onclick="signOutOtherSessions()">🔐 Cerrar las demás</button>
 </div>
 <div id="sessionsPanel" class="session-grid">${renderSessionsPanel()}</div>
+</div>
 </div>
 
 <div class="card">
