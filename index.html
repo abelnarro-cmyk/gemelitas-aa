@@ -582,6 +582,28 @@ max-width:none
   .loginForm{padding:30px 24px}
 }
 
+
+/* ===== Interacción y experiencia profesional ===== */
+button,.btn,.nav button{transition:transform .12s ease,box-shadow .18s ease,filter .18s ease,background .18s ease}
+button:hover,.btn:hover,.nav button:hover{filter:brightness(1.05);box-shadow:0 8px 20px rgba(0,0,0,.14)}
+button:active,.btn:active,.nav button:active{transform:translateY(1px) scale(.975);box-shadow:0 3px 9px rgba(0,0,0,.12)}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none;box-shadow:none;transform:none}
+.ripple{position:relative;overflow:hidden}
+.ripple::after{content:"";position:absolute;width:10px;height:10px;border-radius:50%;background:currentColor;opacity:.18;transform:scale(0);pointer-events:none}
+.ripple.ripple-go::after{animation:ripple .42s ease-out}
+@keyframes ripple{to{transform:scale(22);opacity:0}}
+.savePulse{animation:savePulse .65s ease}
+@keyframes savePulse{50%{transform:scale(1.03)}}
+.session-grid{display:grid;gap:9px}
+.session-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--bg)}
+.session-main{min-width:0}
+.session-title{font-weight:900}
+.session-meta{color:var(--muted);font-size:.76rem;margin-top:4px;line-height:1.4}
+.session-current{color:var(--accent);font-weight:900;font-size:.72rem}
+.session-revoked{color:var(--red);font-weight:900;font-size:.72rem}
+.session-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:620px){.session-item{align-items:flex-start;flex-direction:column}.session-actions{width:100%;justify-content:flex-start}}
+
 </style>
 </head>
 
@@ -748,8 +770,8 @@ ctx.fillRect(0,0,w,h);
 ctx.drawImage(img,0,0,w,h);
 let out=canvas.toDataURL('image/webp',0.82);
 if(!out.startsWith('data:image/webp')) out=canvas.toDataURL('image/jpeg',0.84);
-if(out.length>900000){
-out=canvas.toDataURL(out.startsWith('data:image/webp')?'image/webp':'image/jpeg',0.68);
+if(out.length>450000){
+out=canvas.toDataURL(out.startsWith('data:image/webp')?'image/webp':'image/jpeg',0.60);
 }
 resolve(out);
 };
@@ -882,6 +904,13 @@ let localDirty=false;
 let globalMetrics=[];
 
 let globalLoading=false;
+let deviceSessions=[];
+let sessionCheckTimer=null;
+let currentSessionId=null;
+let remotePendingSnapshot=null;
+let baseServerState=null;
+let soundContext=null;
+let autosaveTimer=setInterval(()=>{if(currentUser&&localDirty)syncNow();},8000);
 
 const uid=()=>{
 if(crypto.randomUUID)
@@ -917,6 +946,193 @@ c=>({
 }[c])
 );
 
+
+const DEVICE_ID_KEY='gemelitas_device_id_v2';
+const SOUND_KEY='gemelitas_button_sound_v1';
+
+function getDeviceId(){
+try{
+let id=localStorage.getItem(DEVICE_ID_KEY);
+if(!id){id=uid();localStorage.setItem(DEVICE_ID_KEY,id);}
+return id;
+}catch(e){return uid();}
+}
+
+function getSoundEnabled(){
+try{return localStorage.getItem(SOUND_KEY)!=='off';}catch(e){return true;}
+}
+
+function setSoundEnabled(enabled){
+try{localStorage.setItem(SOUND_KEY,enabled?'on':'off');}catch(e){}
+if(enabled) playClickSound(true);
+render();
+}
+
+function playClickSound(force=false){
+if(!force&&!getSoundEnabled())return;
+try{
+if(!soundContext) soundContext=new (window.AudioContext||window.webkitAudioContext)();
+if(soundContext.state==='suspended') soundContext.resume();
+const o=soundContext.createOscillator();
+const g=soundContext.createGain();
+o.type='sine';
+o.frequency.value=620;
+g.gain.setValueAtTime(.0001,soundContext.currentTime);
+g.gain.exponentialRampToValueAtTime(.035,soundContext.currentTime+.008);
+g.gain.exponentialRampToValueAtTime(.0001,soundContext.currentTime+.055);
+o.connect(g);g.connect(soundContext.destination);
+o.start();o.stop(soundContext.currentTime+.06);
+}catch(e){}
+}
+
+function deviceInfo(){
+const ua=navigator.userAgent||'';
+let os='Dispositivo';
+if(/Windows/i.test(ua))os='Windows';
+else if(/Android/i.test(ua))os='Android';
+else if(/iPhone|iPad|iPod/i.test(ua))os='iOS';
+else if(/Mac OS X/i.test(ua))os='macOS';
+else if(/Linux/i.test(ua))os='Linux';
+let browser='Navegador';
+if(/Edg\//i.test(ua))browser='Edge';
+else if(/Chrome\//i.test(ua)&&!/Edg\//i.test(ua))browser='Chrome';
+else if(/Firefox\//i.test(ua))browser='Firefox';
+else if(/Safari\//i.test(ua)&&!/Chrome\//i.test(ua))browser='Safari';
+const type=/Mobi|Android/i.test(ua)?'Móvil':'Computadora';
+return {os,browser,type,name:`${browser} · ${os}`};
+}
+
+function jwtClaim(token,key){
+try{
+const part=String(token||'').split('.')[1];
+if(!part)return null;
+const json=JSON.parse(atob(part.replace(/-/g,'+').replace(/_/g,'/')));
+return json?.[key]??null;
+}catch(e){return null;}
+}
+
+function sessionIdFrom(session){
+return String(
+session?.user?.session_id||
+session?.session_id||
+jwtClaim(session?.access_token,'session_id')||
+''
+);
+}
+
+function formatSessionDate(v){
+if(!v)return 'Sin fecha';
+try{return new Date(v).toLocaleString('es-PE',{dateStyle:'medium',timeStyle:'short'});}catch(e){return String(v);}
+}
+
+function renderSessionsPanel(){
+if(!currentUser)return '<div class="empty">Inicia sesión para consultar tus dispositivos.</div>';
+if(!deviceSessions.length)return '<div class="empty">No hay información de sesiones todavía. Pulsa “Actualizar”.</div>';
+return deviceSessions.map(x=>{
+const current=String(x.session_id)===String(currentSessionId);
+const active=Boolean(x.active)&&!x.revoked_at;
+return `<div class="session-item">
+<div class="session-main">
+<div class="session-title">${esc(x.device_name||'Dispositivo')} ${current?'<span class="session-current">· ESTE DISPOSITIVO</span>':''}</div>
+<div class="session-meta">${esc(x.browser||'Navegador')} · ${esc(x.os||'Sistema')} · ${esc(x.device_type||'Equipo')}<br>Última actividad: ${esc(formatSessionDate(x.last_seen_at||x.updated_at))}<br>Inicio: ${esc(formatSessionDate(x.created_at))}</div>
+<div class="${active?'session-current':'session-revoked'}">${active?'● Sesión activa':'● Sesión cerrada'}</div>
+</div>
+<div class="session-actions">${current
+?'<button class="btn secondary small" onclick="logout()">Cerrar esta</button>'
+:active
+?`<button class="btn red small" onclick="revokeDeviceSession('${esc(x.session_id)}')">Cerrar sesión</button>`
+:''}</div>
+</div>`;
+}).join('');
+}
+
+async function registerCurrentSession(session){
+if(!session||!currentUser)return;
+const sid=sessionIdFrom(session);
+if(!sid)return;
+currentSessionId=sid;
+const d=deviceInfo();
+try{
+const {error}=await sb.from('gemelitas_session_devices').upsert({
+session_id:sid,
+user_id:currentUser.id,
+device_id:getDeviceId(),
+device_name:d.name,
+device_type:d.type,
+browser:d.browser,
+os:d.os,
+user_agent:navigator.userAgent||'',
+last_seen_at:new Date().toISOString(),
+revoked_at:null
+},{onConflict:'session_id'});
+if(error)console.warn('No se pudo registrar el dispositivo',error);
+}catch(e){console.warn(e);}
+startSessionHeartbeat();
+}
+
+function startSessionHeartbeat(){
+clearInterval(sessionCheckTimer);
+sessionCheckTimer=setInterval(checkCurrentSessionHealth,30000);
+}
+
+async function checkCurrentSessionHealth(){
+if(!currentUser||!currentSessionId)return;
+try{
+const {data,error}=await sb.rpc('gemelitas_session_status',{p_session_id:currentSessionId});
+if(error)throw error;
+if(!data?.active){
+clearInterval(sessionCheckTimer);
+alert('Esta sesión fue cerrada desde otro dispositivo.');
+await sb.auth.signOut({scope:'local'});
+return;
+}
+await sb.from('gemelitas_session_devices').update({last_seen_at:new Date().toISOString()}).eq('session_id',currentSessionId).eq('user_id',currentUser.id);
+}catch(e){
+console.warn('No se pudo verificar la sesión',e);
+}
+}
+
+async function loadDeviceSessions(force=false){
+if(!currentUser)return;
+const panel=document.getElementById('sessionsPanel');
+if(panel&&force)panel.innerHTML='<div class="empty">Actualizando sesiones…</div>';
+try{
+const {data,error}=await sb.rpc('gemelitas_list_sessions');
+if(error)throw error;
+deviceSessions=Array.isArray(data)?data:[];
+const p=document.getElementById('sessionsPanel');
+if(p)p.innerHTML=renderSessionsPanel();
+}catch(e){
+console.error(e);
+const p=document.getElementById('sessionsPanel');
+if(p)p.innerHTML='<div class="notice">El administrador de sesiones necesita aplicar el SQL de seguridad incluido con esta versión.</div>';
+}
+}
+
+async function revokeDeviceSession(sessionId){
+if(!sessionId||String(sessionId)===String(currentSessionId)){await logout();return;}
+if(!confirm('¿Cerrar la sesión de este dispositivo?'))return;
+try{
+const {data,error}=await sb.rpc('gemelitas_revoke_session',{p_session_id:sessionId});
+if(error)throw error;
+if(!data)throw new Error('La sesión no existe o ya fue cerrada.');
+await loadDeviceSessions(true);
+}catch(e){console.error(e);alert('No se pudo cerrar esa sesión.');}
+}
+
+async function signOutOtherSessions(){
+if(!currentSessionId)return;
+if(!confirm('Se cerrarán todas las demás sesiones de esta cuenta. Este dispositivo permanecerá conectado.'))return;
+try{
+const {error}=await sb.rpc('gemelitas_mark_other_sessions_revoked',{p_session_id:currentSessionId});
+if(error)throw error;
+const {error:authError}=await sb.auth.signOut({scope:'others'});
+if(authError)throw authError;
+await loadDeviceSessions(true);
+alert('Las demás sesiones fueron cerradas.');
+}catch(e){console.error(e);alert('No se pudieron cerrar las demás sesiones.');}
+}
+
 function setStatus(text,good=true){
 
 const e=document.getElementById('syncStatus');
@@ -942,11 +1158,15 @@ const cacheState={
 view:'dashboard'
 };
 
+try{
 localStorage.setItem(
 'gemelitas_cache_'+
 (currentCompanyId||'none'),
 JSON.stringify(cacheState)
 );
+}catch(e){
+console.warn('No se pudo guardar la caché local:',e);
+}
 
 document.body.dataset.theme=
 appearance.theme;
@@ -2563,6 +2783,18 @@ Imagen / logo de esta empresa
 
 </div>
 
+<div class="card">
+<h3>🔊 Experiencia</h3>
+<div class="field">
+<label>Sonido de botones</label>
+<select onchange="setSoundEnabled(this.value==='on')">
+<option value="on" ${getSoundEnabled()?'selected':''}>🔊 Activado</option>
+<option value="off" ${!getSoundEnabled()?'selected':''}>🔇 Silenciado</option>
+</select>
+</div>
+<p class="sub">Incluye una respuesta visual y un sonido corto al pulsar botones.</p>
+</div>
+
 <div class="card" style="border-color:#7f1d1d">
 <h3>🗑️ Administración de empresa</h3>
 <p class="sub">Eliminar esta empresa borra sus datos, membresía y registros centrales de forma permanente.</p>
@@ -2572,6 +2804,16 @@ Imagen / logo de esta empresa
 ${companies.length<=1?'<small class="sub" style="display:block;margin-top:8px">Debes conservar al menos una empresa.</small>':''}
 </div>
 
+</div>
+
+<div class="card">
+<h3>📱 Sesiones y dispositivos</h3>
+<p class="sub">Aquí puedes ver dónde está abierta esta cuenta y cerrar sesiones de otros equipos. El botón se actualiza con la información más reciente de Supabase.</p>
+<div class="row" style="margin-bottom:10px">
+<button class="btn secondary small" onclick="loadDeviceSessions(true)">🔄 Actualizar</button>
+<button class="btn secondary small" onclick="signOutOtherSessions()">🔐 Cerrar las demás</button>
+</div>
+<div id="sessionsPanel" class="session-grid">${renderSessionsPanel()}</div>
 </div>
 
 <div class="card">
@@ -2656,6 +2898,9 @@ drawCharts,
 
 if(v==='global'&&!globalLoading&&(!globalMetrics.length||globalMetrics.length!==companies.length))
 refreshGlobalMetrics();
+
+if(v==='settings')
+setTimeout(()=>loadDeviceSessions(false),50);
 
 }
 
@@ -3546,6 +3791,8 @@ false
 );
 
 ensureWeek();
+baseServerState=structuredClone(state);
+remotePendingSnapshot=null;
 
 loading=false;
 
@@ -3568,6 +3815,9 @@ settings:{
 }
 };
 
+baseServerState=structuredClone(serverData.data);
+remotePendingSnapshot=null;
+
 const globalAppearance=getGlobalAppearance();
 state.settings.theme=globalAppearance.theme;
 state.settings.font=globalAppearance.font;
@@ -3585,6 +3835,8 @@ Después de esto, company_app_data es la fuente
 mergeLegacy(
 localOldState()
 );
+baseServerState=structuredClone(state);
+remotePendingSnapshot=null;
 
 }
 
@@ -3644,8 +3896,11 @@ payload?.new?.company_id!==currentCompanyId
 )
 return;
 
-if(localDirty)
+if(localDirty){
+remotePendingSnapshot=structuredClone(incoming);
+setStatus('Cambios de otro dispositivo pendientes',false);
 return;
+}
 
 const incomingTime=
 Date.parse(
@@ -3672,6 +3927,8 @@ settings:{
 ...(incoming.settings||{})
 }
 };
+baseServerState=structuredClone(incoming);
+remotePendingSnapshot=null;
 
 state.view='dashboard';
 
@@ -3703,99 +3960,117 @@ e
 
 }
 
+
+function snapshotForMerge(x){
+return x?structuredClone(x):structuredClone(DEFAULT);
+}
+
+function sameJson(a,b){
+try{return JSON.stringify(a)===JSON.stringify(b);}catch(e){return false;}
+}
+
+function mergeArrayById(base,local,remote){
+const B=new Map((Array.isArray(base)?base:[]).map(x=>[String(x.id),x]));
+const L=new Map((Array.isArray(local)?local:[]).map(x=>[String(x.id),x]));
+const R=new Map((Array.isArray(remote)?remote:[]).map(x=>[String(x.id),x]));
+const ids=new Set([...B.keys(),...L.keys(),...R.keys()]);
+const out=[];
+for(const id of ids){
+const b=B.get(id), l=L.get(id), r=R.get(id);
+const lc=!sameJson(l,b);
+const rc=!sameJson(r,b);
+if(lc&&rc){
+if(sameJson(l,r)){out.push(l);}
+else if(l===undefined){ /* local deleted; keep local deletion */ }
+else if(r===undefined){ out.push(l); }
+else { out.push(l); }
+}else if(lc){
+if(l!==undefined)out.push(l);
+}else if(rc){
+if(r!==undefined)out.push(r);
+}else if(l!==undefined){
+out.push(l);
+}else if(r!==undefined){
+out.push(r);
+}
+}
+return out;
+}
+
+function mergeServerState(base,local,remote){
+const merged={...structuredClone(remote),...structuredClone(local)};
+for(const k of ['weeks','sales','expenses','income','notes']){
+merged[k]=mergeArrayById(base?.[k],local?.[k],remote?.[k]);
+}
+const scalar=['period','currentWeek'];
+for(const k of scalar){
+const lc=!sameJson(local?.[k],base?.[k]);
+if(lc)merged[k]=local[k];
+}
+merged.settings={...structuredClone(remote?.settings||{}),...structuredClone(local?.settings||{})};
+for(const k of ['name','cash','theme','font','logo']){
+const lc=!sameJson(local?.settings?.[k],base?.settings?.[k]);
+const rc=!sameJson(remote?.settings?.[k],base?.settings?.[k]);
+if(lc)merged.settings[k]=local?.settings?.[k];
+else if(rc)merged.settings[k]=remote?.settings?.[k];
+}
+return merged;
+}
+
+async function fetchServerCompanyData(companyId){
+const {data,error}=await sb.from('company_app_data').select('company_id,data,updated_at').eq('company_id',companyId).maybeSingle();
+if(error)throw error;
+return data;
+}
+
 async function persist(){
-
-if(
-!currentCompanyId||
-loading
-)
-return false;
-
+if(!currentCompanyId||loading)return false;
 const companyId=currentCompanyId;
-
 const revision=localRevision;
+const localSnapshot=snapshotForMerge(state);
+const expectedBase=snapshotForMerge(baseServerState||state);
 
-const timestamp=
-new Date().toISOString();
-
-state.updatedAt=timestamp;
-
-saveLocal();
-
-const snapshot={
-...structuredClone(state),
-updatedAt:timestamp
-};
-
-const payload={
-company_id:companyId,
-data:snapshot
-};
-
-/*
-Las escrituras se ponen en fila. Así, si haces
-varios cambios seguidos, nunca una escritura
-antigua pisa a una más nueva.
-*/
-
-persistChain=
-persistChain
-.catch(
-()=>false
-)
-.then(
-async()=>{
-
-if(
-companyId!==currentCompanyId
-)
-return false;
-
-setStatus(
-'Guardando…'
-);
-
-const {
-error
-}=
-await sb
-.from('company_app_data')
-.upsert(
-payload,
-{
-onConflict:'company_id'
-}
-);
-
-if(error){
-
-setStatus(
-'Sin conexión · guardado local',
-false
-);
-
-console.error(error);
-
-return false;
-
-}
-
-setStatus(
-'Sincronizado'
-);
-
-if(
-localRevision===revision
-)
-localDirty=false;
-
+if(!localDirty && !remotePendingSnapshot){
+setStatus('Sincronizado');
 return true;
-
 }
-);
 
+persistChain=persistChain.catch(()=>false).then(async()=>{
+if(companyId!==currentCompanyId)return false;
+setStatus('Guardando…');
+try{
+let serverRow=await fetchServerCompanyData(companyId);
+let snapshot=localSnapshot;
+if(serverRow?.data&&!sameJson(serverRow.data,expectedBase)){
+if(!localDirty){
+snapshot=structuredClone(serverRow.data);
+}else{
+snapshot=mergeServerState(expectedBase,localSnapshot,serverRow.data);
+}
+}
+const timestamp=new Date().toISOString();
+snapshot.updatedAt=timestamp;
+const payload={company_id:companyId,data:snapshot};
+const {error}=await sb.from('company_app_data').upsert(payload,{onConflict:'company_id'});
+if(error)throw error;
+state={
+...structuredClone(DEFAULT),
+...snapshot,
+settings:{...DEFAULT.settings,...(snapshot.settings||{})}
+};
+baseServerState=structuredClone(snapshot);
+remotePendingSnapshot=null;
+saveLocal();
+setStatus('Sincronizado');
+if(localRevision===revision)localDirty=false;
+return true;
+}catch(error){
+setStatus('Sin conexión · guardado local',false);
+console.error('Error de guardado:',error);
+return false;
+}
+});
 return persistChain;
-
 }
 
 async function syncNow(){
@@ -4089,6 +4364,9 @@ return;
 
 currentUser=data.user;
 
+const loginSession=data.session;
+await registerCurrentSession(loginSession);
+
 document.getElementById(
 'loginScreen'
 ).style.display='none';
@@ -4134,6 +4412,8 @@ if(data.session){
 currentUser=
 data.session.user;
 
+await registerCurrentSession(data.session);
+
 document.getElementById(
 'loginScreen'
 ).style.display='none';
@@ -4176,6 +4456,8 @@ if(
 return;
 
 clearTimeout(saveTimer);
+clearInterval(sessionCheckTimer);
+sessionCheckTimer=null;
 
 try{
 
@@ -4200,7 +4482,7 @@ realtimeChannel=null;
 
 }
 
-await sb.auth.signOut();
+await sb.auth.signOut({scope:'local'});
 
 currentUser=null;
 
@@ -4399,6 +4681,29 @@ document.getElementById(
 
 }
 );
+
+
+document.addEventListener('click',e=>{
+const b=e.target.closest('button,.btn');
+if(!b||b.disabled)return;
+b.classList.remove('ripple-go');void b.offsetWidth;b.classList.add('ripple-go');
+playClickSound();
+});
+
+document.addEventListener('visibilitychange',()=>{
+if(document.visibilityState==='visible'&&currentUser){
+syncNow();
+checkCurrentSessionHealth();
+}
+});
+
+window.addEventListener('online',()=>{
+if(currentUser){
+setStatus('Conexión recuperada');
+syncNow();
+loadDeviceSessions(false);
+}
+});
 
 checkSession();
 
