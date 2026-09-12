@@ -647,6 +647,70 @@ button:active,.btn:active,.nav button:active{transform:translateY(1px) scale(.97
 .week-picker select{width:100%;min-width:0}
 .week-header-actions .btn{white-space:nowrap}
 }
+
+/* ===== General: gráficos y filtro profesional, ligero para móvil ===== */
+.globalFilterCard{padding:14px 16px}
+.globalFilterField{min-width:230px;margin:0}
+.globalChart{height:330px;overflow:hidden}
+.svgChartWrap,.expenseChartWrap{width:100%;height:100%;display:flex;flex-direction:column;justify-content:center}
+.svgChartWrap svg{width:100%;height:285px;display:block;overflow:visible}
+.svgChartWrap .gridline{stroke:var(--line);stroke-width:1;opacity:.55}
+.svgChartWrap .axis{fill:var(--muted);font-size:11px;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+.svgChartWrap .line{fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+.svgChartWrap .line.g{stroke:var(--accent)}
+.svgChartWrap .line.b{stroke:#4f8cff}
+.svgChartWrap .line.r{stroke:var(--red)}
+.svgChartWrap .line.p{stroke:var(--accent2)}
+.chartLegendRow{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;padding:2px 0 6px}
+.chartLegend{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.chartLegend i{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--muted)}
+.chartLegend i.g{background:var(--accent)}
+.chartLegend i.b{background:#4f8cff}
+.chartLegend i.r{background:var(--red)}
+.chartLegend i.p{background:var(--accent2)}
+.expenseChartWrap svg{width:100%;height:100%;min-height:210px;display:block}
+.expenseChartWrap .barBg{fill:var(--line);opacity:.35}
+.expenseChartWrap .bar{fill:var(--accent)}
+.expenseChartWrap .bar.b{fill:#4f8cff}.expenseChartWrap .bar.r{fill:var(--red)}
+.expenseChartWrap .bar.p{fill:var(--accent2)}.expenseChartWrap .bar.gold{fill:var(--gold)}
+.expenseChartWrap .bar.cyan{fill:#8bd3dd}.expenseChartWrap .bar.purple{fill:#c084fc}
+.expenseChartWrap .bar.pink{fill:#fb7185}.expenseChartWrap .bar.slate{fill:#94a3b8}
+.expenseChartWrap .bar.mint{fill:#34d399}
+.expenseChartWrap .barLabel,.expenseChartWrap .barValue{fill:var(--text);font-size:13px;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+.expenseChartWrap .barValue{font-weight:700}
+.chartTotal{text-align:center;font-size:12px;color:var(--muted);padding-top:4px}
+.chartEmpty{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;text-align:center;color:var(--muted);padding:30px}
+.chartEmpty div{font-size:30px}.chartEmpty b{color:var(--text)}.chartEmpty span{font-size:12px;max-width:330px}
+@media(max-width:720px){
+.globalFilterCard .section{align-items:stretch}
+.globalFilterField{min-width:0;width:100%}
+.globalChart{height:290px}
+.svgChartWrap svg{height:245px}
+.chartLegendRow{gap:10px}
+}
+
+
+.week-picker-wrap{position:relative;min-width:0}
+.week-picker{display:flex;align-items:center;gap:7px;min-width:0}
+.week-search-btn{white-space:nowrap}
+.week-search-popover{position:absolute;right:0;top:calc(100% + 8px);z-index:50;width:min(390px,calc(100vw - 32px));padding:10px;border:1px solid var(--line);border-radius:16px;background:var(--card);box-shadow:0 18px 45px rgba(0,0,0,.18)}
+.week-search-input-row{display:flex;gap:7px;margin-bottom:8px}
+.week-search-input-row input{min-width:0;flex:1}
+.week-search-result{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:11px;margin-top:6px;text-align:left;cursor:pointer}
+.week-search-result:hover{filter:brightness(1.04)}
+.week-search-result small{color:var(--muted);white-space:nowrap}
+.compact-search-empty{padding:10px}
+@media(max-width:620px){
+ .week-picker{width:100%}
+ .week-picker label{display:none}
+ .week-picker select{min-width:0;flex:1;width:100%}
+ .week-search-btn span{display:none}
+ .week-search-popover{right:auto;left:0;width:min(390px,calc(100vw - 32px))}
+ .week-header,.week-module-header{align-items:stretch}
+ .week-header-actions{width:100%}
+ .week-header-actions .week-picker-wrap{width:100%}
+}
+
 </style>
 </head>
 
@@ -656,7 +720,7 @@ button:active,.btn:active,.nav button:active{transform:translateY(1px) scale(.97
 <div class="loginBox">
 
   <div class="loginBrand">
-    <img class="loginLogo" src="" data-gemelitas-logo="1" alt="Logo Las Gemelitas A&A S.A.C.">
+    <img class="loginLogo" src="" data-gemelitas-logo="1" alt="Logo Las Gemelitas A&A S.A.C." onerror="this.src=DEFAULT_COMPANY_LOGO">
     <h2>GEMELITAS A&amp;A S.A.C.</h2>
     <p>Sistema profesional de gestión y control</p>
   </div>
@@ -697,7 +761,7 @@ button:active,.btn:active,.nav button:active{transform:translateY(1px) scale(.97
 <div class="brand">
 
 <div class="logo" style="background:#fff;padding:4px;overflow:hidden;">
-<img class="topLogo" src="" data-gemelitas-logo="1" alt="Logo GEMELITAS A&A S.A.C.">
+<img class="topLogo" src="" data-gemelitas-logo="1" alt="Logo GEMELITAS A&A S.A.C." onerror="this.src=DEFAULT_COMPANY_LOGO">
 </div>
 
 <div>
@@ -955,6 +1019,7 @@ let localRevision=0;
 let localDirty=false;
 
 let globalMetrics=[];
+let globalCompanyFilter='all';
 
 let globalLoading=false;
 let deviceSessions=[];
@@ -1677,7 +1742,7 @@ if(!d){
 globalMetrics.push({
 id,
 name:c?.name||'Empresa',
-sales:0,income:0,expenses:0,personal:0,profit:0,cash:0
+sales:0,income:0,expenses:0,personal:0,profit:0,cash:0,weekly:{},expenseCategories:{}
 });
 continue;
 }
@@ -1700,6 +1765,20 @@ const cash=n(d.settings?.cash)+totalIncome-totalExpenses;
 
 const name=d.settings?.name||c?.name||'Empresa';
 
+const weekly={};
+for(const w of weeks){
+const start=w.start;
+const weekSales=salesTotalLocal(w);
+const weekIncome=income.filter(x=>weekForDate(x.date)===start).reduce((s,x)=>s+n(x.amount),0);
+const weekExpenses=expenses.filter(x=>x.type==='business'&&weekForDate(x.date)===start).reduce((s,x)=>s+n(x.amount),0);
+weekly[start]={sales:weekSales,income:weekIncome,expenses:weekExpenses};
+}
+const expenseCategories={};
+for(const x of expenses.filter(x=>x.type==='business')){
+const cat=x.category||'Otros';
+expenseCategories[cat]=(expenseCategories[cat]||0)+n(x.amount);
+}
+
 globalMetrics.push({
 id,name,
 sales:totalSales,
@@ -1707,7 +1786,9 @@ income:totalIncome,
 expenses:businessExpenses,
 personal:personalExpenses,
 profit:totalSales-businessExpenses,
-cash
+cash,
+weekly,
+expenseCategories
 });
 
 }
@@ -1730,6 +1811,127 @@ render();
 
 }
 
+
+function globalSelectedMetrics(){
+if(globalCompanyFilter==='all')return globalMetrics.slice();
+const found=globalMetrics.find(x=>String(x.id)===String(globalCompanyFilter));
+return found?[found]:globalMetrics.slice();
+}
+
+function setGlobalCompanyFilter(id){
+globalCompanyFilter=id||'all';
+if(state.view==='global')render();
+}
+
+function globalSvgLineChart(metrics){
+const W=900,H=330,L=62,R=22,T=20,B=52;
+const PW=W-L-R,PH=H-T-B;
+const weekly={};
+
+metrics.forEach(m=>{
+Object.entries(m.weekly||{}).forEach(([start,v])=>{
+if(!weekly[start])weekly[start]={sales:0,income:0,expenses:0};
+weekly[start].sales+=n(v.sales);
+weekly[start].income+=n(v.income);
+weekly[start].expenses+=n(v.expenses);
+});
+});
+
+const starts=Object.keys(weekly).sort();
+if(!starts.length){
+return `<div class="chartEmpty"><div>📊</div><b>Aún no hay datos semanales para graficar</b><span>Cuando registres semanas, ventas, ingresos o gastos aparecerán aquí automáticamente.</span></div>`;
+}
+
+const series=[
+{key:'sales',label:'Ventas',cls:'g'},
+{key:'income',label:'Ingresos',cls:'b'},
+{key:'expenses',label:'Gastos',cls:'r'},
+{key:'profit',label:'Utilidad',cls:'p'}
+];
+
+const values=[];
+starts.forEach(k=>{
+values.push(weekly[k].sales,weekly[k].income,weekly[k].expenses,weekly[k].sales-weekly[k].expenses);
+});
+let max=Math.max(...values,0);
+if(max<=0)max=1;
+max=max*1.12;
+
+const x=i=>starts.length===1?L+PW/2:L+(i/(starts.length-1))*PW;
+const y=v=>T+PH-(Math.max(0,v)/max)*PH;
+const pathFor=key=>starts.map((k,i)=>{
+const v=key==='profit'?weekly[k].sales-weekly[k].expenses:weekly[k][key];
+return `${i?'L':'M'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`;
+}).join(' ');
+
+const grid=[0,.25,.5,.75,1].map(pct=>{
+const yy=T+PH-PH*pct;
+const val=max*pct;
+return `<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" class="gridline"/><text x="${L-9}" y="${yy+4}" text-anchor="end" class="axis">${moneyShort(val)}</text>`;
+}).join('');
+
+const labels=starts.map((start,i)=>{
+const d=parseDateSafe(start);
+const label=d?d.toLocaleDateString('es-PE',{day:'2-digit',month:'short'}):start;
+return `<text x="${x(i)}" y="${H-18}" text-anchor="middle" class="axis">${esc(label)}</text>`;
+}).join('');
+
+const paths=series.map(s=>`<path d="${pathFor(s.key)}" class="line ${s.cls}"/>`).join('');
+
+const legend=series.map(s=>`<span class="chartLegend"><i class="${s.cls}"></i>${s.label}</span>`).join('');
+
+return `<div class="svgChartWrap">
+<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de crecimiento del negocio">
+${grid}${labels}${paths}
+</svg>
+<div class="chartLegendRow">${legend}</div>
+</div>`;
+}
+
+function globalSvgExpenseChart(metrics){
+const cats={};
+metrics.forEach(m=>{
+Object.entries(m.expenseCategories||{}).forEach(([cat,val])=>{
+cats[cat]=(cats[cat]||0)+n(val);
+});
+});
+const entries=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+
+if(!entries.length){
+return `<div class="chartEmpty"><div>💸</div><b>Aún no hay gastos para mostrar</b><span>Los gastos del negocio aparecerán aquí por categoría.</span></div>`;
+}
+
+const total=entries.reduce((s,x)=>s+x[1],0);
+const W=900,H=Math.max(260,entries.length*46+80);
+const max=Math.max(...entries.map(x=>x[1]),1);
+const palette=['g','b','r','p','gold','cyan','purple','pink','slate','mint'];
+
+const bars=entries.map(([cat,val],i)=>{
+const y=28+i*46;
+const width=(val/max)*PW;
+return `<g>
+<text x="0" y="${y+16}" class="barLabel">${esc(cat)}</text>
+<rect x="150" y="${y}" width="${PW}" height="22" rx="11" class="barBg"/>
+<rect x="150" y="${y}" width="${Math.max(3,width)}" height="22" rx="11" class="bar ${palette[i%palette.length]}"/>
+<text x="${Math.min(150+width+10,W-5)}" y="${y+16}" class="barValue">${esc(money(val))}</text>
+</g>`;
+}).join('');
+
+return `<div class="expenseChartWrap">
+<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gastos por categoría">
+${bars}
+</svg>
+<div class="chartTotal">Total gastos de negocio: <b>${money(total)}</b></div>
+</div>`;
+}
+
+function moneyShort(v){
+v=n(v);
+if(Math.abs(v)>=1000000)return 'S/ '+(v/1000000).toFixed(1)+' M';
+if(Math.abs(v)>=1000)return 'S/ '+(v/1000).toFixed(v%1000===0?0:1)+' mil';
+return 'S/ '+v.toFixed(0);
+}
+
 function globalDashboard(){
 
 if(globalLoading){
@@ -1745,15 +1947,18 @@ return `
 </div>`;
 }
 
-const totalSales=globalMetrics.reduce((s,x)=>s+x.sales,0);
-const totalIncome=globalMetrics.reduce((s,x)=>s+x.income,0);
-const totalExpenses=globalMetrics.reduce((s,x)=>s+x.expenses,0);
-const totalPersonal=globalMetrics.reduce((s,x)=>s+x.personal,0);
-const totalProfit=globalMetrics.reduce((s,x)=>s+x.profit,0);
-const totalCash=globalMetrics.reduce((s,x)=>s+x.cash,0);
-const count=globalMetrics.length;
+const selected=globalSelectedMetrics();
+const isAll=globalCompanyFilter==='all';
+const totalSales=selected.reduce((s,x)=>s+n(x.sales),0);
+const totalIncome=selected.reduce((s,x)=>s+n(x.income),0);
+const totalExpenses=selected.reduce((s,x)=>s+n(x.expenses),0);
+const totalPersonal=selected.reduce((s,x)=>s+n(x.personal),0);
+const totalProfit=selected.reduce((s,x)=>s+n(x.profit),0);
+const totalCash=selected.reduce((s,x)=>s+n(x.cash),0);
+const count=selected.length;
+const selectedName=!isAll&&selected[0]?selected[0].name:'Todas las empresas';
 
-const rows=globalMetrics.slice().sort((a,b)=>b.sales-a.sales).map(x=>`
+const rows=selected.slice().sort((a,b)=>b.sales-a.sales).map(x=>`
 <tr>
 <td><b>${esc(x.name)}</b></td>
 <td>${money(x.sales)}</td>
@@ -1761,7 +1966,7 @@ const rows=globalMetrics.slice().sort((a,b)=>b.sales-a.sales).map(x=>`
 <td>${money(x.expenses)}</td>
 <td class="green">${money(x.profit)}</td>
 <td>${money(x.cash)}</td>
-<td><button class="btn secondary small" onclick="openCompanyFromGlobal('${x.id}')">Ver empresa</button></td>
+<td><button class="btn secondary small" onclick="openCompanyFromGlobal('${esc(x.id)}')">Ver empresa</button></td>
 </tr>`).join('');
 
 return `
@@ -1770,7 +1975,7 @@ return `
 <div>
 <div class="pill">VISIÓN GENERAL</div>
 <h2 style="font-size:1.5rem;margin-top:10px">Resumen general del negocio 🌐</h2>
-<p class="sub">Una sola vista para supervisar todas las empresas administradas.</p>
+<p class="sub">${isAll?'Una sola vista para supervisar todas las empresas administradas.':'Vista completa de '+esc(selectedName)+', sin necesidad de entrar a su empresa.'}</p>
 </div>
 <div class="row">
 <button class="btn secondary small" onclick="refreshGlobalMetrics()">↻ Actualizar</button>
@@ -1778,18 +1983,52 @@ return `
 </div>
 </div>
 
+<div class="card globalFilterCard" style="margin-top:13px">
+<div class="section" style="margin:0">
+<div>
+<h3 style="margin:0">🔎 Consultar información</h3>
+<p class="sub">Elige todas las empresas o una sola para revisar sus resultados desde aquí.</p>
+</div>
+<div class="field globalFilterField">
+<label>Vista</label>
+<select onchange="setGlobalCompanyFilter(this.value)">
+<option value="all" ${isAll?'selected':''}>🌐 Todas las empresas</option>
+${globalMetrics.map(x=>`<option value="${esc(x.id)}" ${String(globalCompanyFilter)===String(x.id)?'selected':''}>🏢 ${esc(x.name)}</option>`).join('')}
+</select>
+</div>
+</div>
+</div>
+
 <div class="grid kpis" style="margin-top:13px">
-<div class="card kpi"><label>Empresas</label><strong>${count}</strong><small>Empresas disponibles</small></div>
-<div class="card kpi"><label>Ventas totales</label><strong class="green">${money(totalSales)}</strong><small>Todas las empresas</small></div>
+<div class="card kpi"><label>Empresas</label><strong>${count}</strong><small>${isAll?'Empresas disponibles':'Empresa seleccionada'}</small></div>
+<div class="card kpi"><label>Ventas totales</label><strong class="green">${money(totalSales)}</strong><small>${isAll?'Todas las empresas':esc(selectedName)}</small></div>
 <div class="card kpi"><label>Ingresos recibidos</label><strong class="blue">${money(totalIncome)}</strong><small>Dinero registrado</small></div>
-<div class="card kpi"><label>Gastos negocio</label><strong class="redtxt">${money(totalExpenses)}</strong><small>Operación de las empresas</small></div>
-<div class="card kpi"><label>Utilidad estimada</label><strong class="green">${money(totalProfit)}</strong><small>Ventas − gastos negocio</small></div>
-<div class="card kpi"><label>Caja estimada</label><strong>${money(totalCash)}</strong><small>Consolidado</small></div>
+<div class="card kpi"><label>Gastos negocio</label><strong class="redtxt">${money(totalExpenses)}</strong><small>Operación</small></div>
+<div class="card kpi"><label>Utilidad estimada</label><strong class="green">${money(totalProfit)}</strong><small>Ventas − gastos</small></div>
+<div class="card kpi"><label>Caja estimada</label><strong>${money(totalCash)}</strong><small>Consolidado de la vista</small></div>
+</div>
+
+<div class="grid two" style="margin-top:13px">
+<div class="card">
+<div class="section">
+<div><h2>📈 Crecimiento ${isAll?'general':'de '+esc(selectedName)}</h2><p class="sub">${isAll?'Evolución consolidada de todas las empresas por semana.':'Evolución semanal de la empresa seleccionada.'}</p></div>
+<span class="pill">${esc(selectedName)}</span>
+</div>
+<div class="chart globalChart">${globalSvgLineChart(selected)}</div>
+</div>
+
+<div class="card">
+<div class="section">
+<div><h2>💸 Gastos ${isAll?'del conjunto':'de '+esc(selectedName)}</h2><p class="sub">${isAll?'Distribución consolidada de los gastos del negocio.':'Distribución de los gastos de la empresa seleccionada.'}</p></div>
+<span class="pill">${esc(selectedName)}</span>
+</div>
+<div class="chart globalChart">${globalSvgExpenseChart(selected)}</div>
+</div>
 </div>
 
 <div class="card" style="margin-top:13px">
 <div class="section">
-<div><h2>🏢 Empresas</h2><p class="sub">Comparación rápida de resultados por empresa.</p></div>
+<div><h2>🏢 ${isAll?'Empresas':'Resumen de '+esc(selectedName)}</h2><p class="sub">${isAll?'Comparación rápida de resultados por empresa.':'Toda la información financiera disponible de esta empresa.'}</p></div>
 </div>
 <div class="tablewrap">
 <table>
@@ -1800,10 +2039,15 @@ return `
 </div>
 
 <div class="card" style="margin-top:13px">
-<div class="notice">👨‍👩‍👧 Gastos personales registrados en conjunto: <b>${money(totalPersonal)}</b>. Se mantienen separados de la utilidad del negocio.</div>
+<div class="notice">👨‍👩‍👧 Gastos personales registrados en la vista: <b>${money(totalPersonal)}</b>. Se mantienen separados de la utilidad del negocio.</div>
 </div>
 `;
+}
 
+function drawGlobalCharts(){
+/* Los gráficos de General se renderizan como SVG para que funcionen
+   incluso si Chart.js tarda en cargar o falla su CDN. */
+return;
 }
 
 async function openCompanyFromGlobal(id){
@@ -1882,7 +2126,7 @@ return `
 <div>
 
 <div class="dashboardHeroBrand">
-<img src="" data-company-logo="1" alt="Logo Las Gemelitas A&A S.A.C.">
+<img src="" data-company-logo="1" alt="Logo de la empresa activa" onerror="this.src=DEFAULT_COMPANY_LOGO">
 <div>
 <div class="pill">
 CONTROL CENTRALIZADO
@@ -2089,16 +2333,58 @@ const f=d=>d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'num
 return `${f(a)} al ${f(b)}`;
 }
 
+let weekSearchOpen=false;
+let weekSearchText='';
+
+function toggleWeekSearch(){
+weekSearchOpen=!weekSearchOpen;
+if(!weekSearchOpen)weekSearchText='';
+render();
+if(weekSearchOpen){
+setTimeout(()=>document.getElementById('weekSearchInput')?.focus(),40);
+}
+}
+
+function weekMatches(w){
+const q=String(weekSearchText||'').trim().toLowerCase();
+if(!q)return true;
+return [w.label,w.start,weekDateLabel(w)].join(' ').toLowerCase().includes(q);
+}
+
+function setWeekSearch(value){
+weekSearchText=value||'';
+const box=document.getElementById('weekSearchResults');
+if(box)box.innerHTML=weekSearchResultsHTML(selectedWeek());
+}
+
+function weekSearchResultsHTML(current){
+const weeks=[...state.weeks].filter(x=>x&&x.start).sort((a,b)=>String(b.start).localeCompare(String(a.start)));
+const matches=weeks.filter(weekMatches);
+if(!matches.length)return '<div class="empty compact-search-empty">No se encontró esa semana.</div>';
+return matches.slice(0,10).map(x=>`<button type="button" class="week-search-result" onclick="selectWeekFromPicker('${esc(x.id)}')"><span>📅 ${esc(x.label)}</span><small>${esc(weekDateLabel(x))}${x.id===current.id?' · Actual':''}</small></button>`).join('');
+}
+
 function compactWeekSelector(w){
 const weeks=[...state.weeks]
 .filter(x=>x&&x.start)
 .sort((a,b)=>String(a.start).localeCompare(String(b.start)));
 return `
+<div class="week-picker-wrap">
 <div class="week-picker">
 <label>Semana</label>
 <select aria-label="Seleccionar semana" onchange="selectWeekFromPicker(this.value)">
 ${weeks.map(x=>`<option value="${esc(x.id)}" ${String(x.id)===String(w.id)?'selected':''}>${esc(x.label)} · ${esc(weekDateLabel(x))}</option>`).join('')}
 </select>
+<button type="button" class="btn secondary small week-search-btn" onclick="toggleWeekSearch()" aria-label="Buscar semana">🔎 <span>Buscar</span></button>
+</div>
+${weekSearchOpen?`
+<div class="week-search-popover">
+<div class="week-search-input-row">
+<input id="weekSearchInput" type="search" value="${esc(weekSearchText)}" placeholder="Buscar por nombre o fecha…" oninput="setWeekSearch(this.value)">
+<button type="button" class="btn secondary small" onclick="toggleWeekSearch()">Cerrar</button>
+</div>
+<div id="weekSearchResults">${weekSearchResultsHTML(w)}</div>
+</div>`:''}
 </div>`;
 }
 
@@ -2875,6 +3161,9 @@ setTimeout(
 drawCharts,
 30
 );
+
+if(v==='global'&&!globalLoading)
+setTimeout(drawGlobalCharts,30);
 
 if(v==='global'&&!globalLoading&&(!globalMetrics.length||globalMetrics.length!==companies.length))
 refreshGlobalMetrics();
