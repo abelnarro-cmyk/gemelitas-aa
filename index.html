@@ -634,6 +634,195 @@ button:active,.btn:active,.nav button:active{transform:translateY(1px) scale(.97
 .session-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 @media(max-width:620px){.session-item{align-items:flex-start;flex-direction:column}.session-actions{width:100%;justify-content:flex-start}}
 
+
+/* ===== GEMELITAS A&A — Apple-inspired visual polish ===== */
+:root{
+  --blue:#4f8cff;
+  --apple-radius:18px;
+  --apple-ease:cubic-bezier(.22,1,.36,1);
+}
+
+html,body{
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Arial,sans-serif;
+  letter-spacing:-.01em;
+  background:
+    radial-gradient(circle at 8% 0, color-mix(in srgb,var(--accent2) 12%,transparent), transparent 30%),
+    radial-gradient(circle at 95% 8%, color-mix(in srgb,var(--accent) 9%,transparent), transparent 26%),
+    var(--bg);
+}
+
+button,input,select,textarea{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+}
+
+button,.btn,.nav button{
+  -webkit-tap-highlight-color:transparent;
+  transition:
+    transform .18s var(--apple-ease),
+    box-shadow .22s var(--apple-ease),
+    background .22s var(--apple-ease),
+    border-color .22s var(--apple-ease),
+    opacity .22s ease;
+}
+
+button:hover,.btn:hover,.nav button:hover{
+  transform:translateY(-1px);
+}
+
+button:active,.btn:active,.nav button:active{
+  transform:scale(.975);
+}
+
+.card{
+  border-radius:var(--apple-radius);
+  box-shadow:
+    0 1px 2px rgba(0,0,0,.04),
+    0 12px 34px rgba(20,35,55,.09);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+
+body[data-theme=light] .card{
+  background:color-mix(in srgb,var(--card) 91%,transparent);
+  box-shadow:
+    0 1px 2px rgba(0,0,0,.035),
+    0 16px 40px rgba(34,55,80,.075);
+}
+
+.logo{
+  border-radius:15px;
+  box-shadow:0 7px 20px rgba(0,0,0,.12);
+}
+
+.topLogo{
+  border-radius:11px;
+}
+
+.nav{
+  scrollbar-width:none;
+}
+
+.nav::-webkit-scrollbar{
+  display:none;
+}
+
+.nav button{
+  border-radius:14px;
+  padding:10px 15px;
+  background:color-mix(in srgb,var(--card) 88%,transparent);
+  box-shadow:0 1px 2px rgba(0,0,0,.035);
+}
+
+.nav button.active{
+  box-shadow:0 5px 16px color-mix(in srgb,var(--accent2) 24%,transparent);
+}
+
+.btn{
+  border-radius:13px;
+  box-shadow:0 4px 14px color-mix(in srgb,var(--accent2) 14%,transparent);
+}
+
+.btn.secondary{
+  box-shadow:0 1px 2px rgba(0,0,0,.035);
+}
+
+input,select,textarea{
+  border-radius:13px;
+  transition:border-color .2s ease,box-shadow .2s ease,background .2s ease;
+}
+
+input:focus,select:focus,textarea:focus{
+  outline:none;
+  border-color:color-mix(in srgb,var(--accent2) 72%,var(--line));
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--accent2) 14%,transparent);
+}
+
+.pill{
+  border-radius:999px;
+  letter-spacing:.01em;
+}
+
+.notice{
+  border-radius:13px;
+}
+
+.sync{
+  display:inline-flex;
+  align-items:center;
+}
+
+.statusdot{
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 10%,transparent);
+}
+
+.chart{
+  height:300px;
+  position:relative;
+}
+
+.hero{
+  box-shadow:
+    0 1px 2px rgba(0,0,0,.035),
+    0 18px 48px rgba(30,50,75,.10);
+}
+
+.kpi{
+  transition:transform .22s var(--apple-ease),box-shadow .22s var(--apple-ease);
+}
+
+.kpi:hover{
+  transform:translateY(-2px);
+  box-shadow:0 16px 36px rgba(30,50,75,.11);
+}
+
+table th{
+  letter-spacing:.04em;
+}
+
+.loginBox{
+  border-radius:26px;
+  backdrop-filter:blur(22px);
+  -webkit-backdrop-filter:blur(22px);
+}
+
+.login input{
+  border-radius:14px;
+}
+
+.login button{
+  border-radius:14px;
+}
+
+.undo{
+  border-radius:16px;
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+
+.emoji,.icon,.nav button{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;
+}
+
+@media(max-width:620px){
+  .chart{height:250px}
+  .card{border-radius:17px}
+}
+
+/* Keep motion subtle and accessible. */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+    scroll-behavior:auto!important;
+  }
+}
+
 </style>
 </head>
 
@@ -1182,15 +1371,35 @@ if(!force&&!getSoundEnabled())return;
 try{
 if(!soundContext) soundContext=new (window.AudioContext||window.webkitAudioContext)();
 if(soundContext.state==='suspended') soundContext.resume();
-const o=soundContext.createOscillator();
-const g=soundContext.createGain();
-o.type='sine';
-o.frequency.value=620;
-g.gain.setValueAtTime(.0001,soundContext.currentTime);
-g.gain.exponentialRampToValueAtTime(.035,soundContext.currentTime+.008);
-g.gain.exponentialRampToValueAtTime(.0001,soundContext.currentTime+.055);
-o.connect(g);g.connect(soundContext.destination);
-o.start();o.stop(soundContext.currentTime+.06);
+
+const now=soundContext.currentTime;
+
+const body=soundContext.createOscillator();
+const bodyGain=soundContext.createGain();
+body.type='sine';
+body.frequency.setValueAtTime(420,now);
+body.frequency.exponentialRampToValueAtTime(300,now+.045);
+bodyGain.gain.setValueAtTime(.0001,now);
+bodyGain.gain.exponentialRampToValueAtTime(.018,now+.006);
+bodyGain.gain.exponentialRampToValueAtTime(.0001,now+.085);
+body.connect(bodyGain);
+bodyGain.connect(soundContext.destination);
+
+const tick=soundContext.createOscillator();
+const tickGain=soundContext.createGain();
+tick.type='sine';
+tick.frequency.setValueAtTime(980,now);
+tick.frequency.exponentialRampToValueAtTime(760,now+.035);
+tickGain.gain.setValueAtTime(.0001,now);
+tickGain.gain.exponentialRampToValueAtTime(.010,now+.004);
+tickGain.gain.exponentialRampToValueAtTime(.0001,now+.055);
+tick.connect(tickGain);
+tickGain.connect(soundContext.destination);
+
+body.start(now);
+tick.start(now);
+body.stop(now+.09);
+tick.stop(now+.06);
 }catch(e){}
 }
 
@@ -1373,7 +1582,7 @@ document.body.dataset.theme=appearance.theme;
 document.documentElement.style.setProperty('--fs',appearance.font+'px');
 
 const brand=document.getElementById('brandName');
-if(brand)brand.textContent=state.settings.name||'Empresa';
+if(brand)brand.textContent='GEMELITAS A&A S.A.C.';
 
 const company=companies.find(c=>c.id===currentCompanyId);
 if(company)company.name=state.settings.name||company.name||'Empresa';
@@ -1660,7 +1869,7 @@ if(!d){
 globalMetrics.push({
 id,
 name:c?.name||'Empresa',
-sales:0,income:0,expenses:0,personal:0,profit:0,cash:0
+sales:0,income:0,expenses:0,personal:0,profit:0,cash:0,weekly:{},expenseCategories:{}
 });
 continue;
 }
@@ -1683,6 +1892,43 @@ const cash=n(d.settings?.cash)+totalIncome-totalExpenses;
 
 const name=d.settings?.name||c?.name||'Empresa';
 
+const weeklyMap={};
+const addWeekly=(start,salesAmount,incomeAmount,expenseAmount)=>{
+if(!start)return;
+if(!weeklyMap[start])weeklyMap[start]={sales:0,income:0,expenses:0};
+weeklyMap[start].sales+=n(salesAmount);
+weeklyMap[start].income+=n(incomeAmount);
+weeklyMap[start].expenses+=n(expenseAmount);
+};
+
+weeks.forEach(w=>{
+const start=w.start;
+if(!start)return;
+const ws=salesTotalLocal(w);
+const wi=income.filter(x=>x.weekId===w.id || weekForDate(x.date)===start).reduce((sum,x)=>sum+n(x.amount),0);
+const we=expenses.filter(x=>x.type==='business' && weekForDate(x.date)===start).reduce((sum,x)=>sum+n(x.amount),0);
+addWeekly(start,ws,wi,we);
+});
+
+sales.forEach(x=>{
+const start=weekForDate(x.date);
+if(start&&!weeklyMap[start])addWeekly(start,0,0,0);
+});
+income.forEach(x=>{
+const start=weekForDate(x.date);
+if(start&&!weeklyMap[start])addWeekly(start,0,0,0);
+});
+expenses.filter(x=>x.type==='business').forEach(x=>{
+const start=weekForDate(x.date);
+if(start&&!weeklyMap[start])addWeekly(start,0,0,0);
+});
+
+const expenseCategories={};
+expenses.filter(x=>x.type==='business').forEach(x=>{
+const cat=String(x.category||'Otros').trim()||'Otros';
+expenseCategories[cat]=(expenseCategories[cat]||0)+n(x.amount);
+});
+
 globalMetrics.push({
 id,name,
 sales:totalSales,
@@ -1690,7 +1936,9 @@ income:totalIncome,
 expenses:businessExpenses,
 personal:personalExpenses,
 profit:totalSales-businessExpenses,
-cash
+cash,
+weekly:weeklyMap,
+expenseCategories
 });
 
 }
@@ -1713,6 +1961,194 @@ render();
 
 }
 
+function drawGlobalCharts(){
+if(typeof Chart==='undefined')return;
+
+if(globalCharts.growth)globalCharts.growth.destroy();
+if(globalCharts.expenses)globalCharts.expenses.destroy();
+
+const growthCanvas=document.getElementById('globalGrowthChart');
+const expenseCanvas=document.getElementById('globalExpenseChart');
+if(!growthCanvas||!expenseCanvas)return;
+
+const weekly={};
+const expenseCats={};
+
+globalMetrics.forEach(m=>{
+Object.entries(m.weekly||{}).forEach(([start,v])=>{
+if(!weekly[start])weekly[start]={sales:0,income:0,expenses:0};
+weekly[start].sales+=n(v.sales);
+weekly[start].income+=n(v.income);
+weekly[start].expenses+=n(v.expenses);
+});
+
+Object.entries(m.expenseCategories||{}).forEach(([cat,value])=>{
+expenseCats[cat]=(expenseCats[cat]||0)+n(value);
+});
+});
+
+const starts=Object.keys(weekly).sort();
+const labels=starts.map(start=>{
+const d=parseDateSafe(start);
+return d?d.toLocaleDateString('es-PE',{day:'2-digit',month:'short'}):start;
+});
+
+const cs=getComputedStyle(document.body);
+const accent=cs.getPropertyValue('--accent').trim()||'#39d98a';
+const accent2=cs.getPropertyValue('--accent2').trim()||'#6d8cff';
+const red=cs.getPropertyValue('--red').trim()||'#ff6b7a';
+const blue=cs.getPropertyValue('--blue').trim()||'#4f8cff';
+const mut=cs.getPropertyValue('--muted').trim()||'#91a4ba';
+const line=cs.getPropertyValue('--line').trim()||'#263c58';
+
+Chart.defaults.color=mut;
+Chart.defaults.font.family='-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif';
+Chart.defaults.font.size=12;
+
+const moneyTick=value=>{
+const amount=n(value);
+if(Math.abs(amount)>=1000000)return 'S/ '+(amount/1000000).toFixed(1)+' M';
+if(Math.abs(amount)>=1000)return 'S/ '+(amount/1000).toFixed(0)+' mil';
+return 'S/ '+amount.toFixed(0);
+};
+
+globalCharts.growth=new Chart(growthCanvas,{
+type:'line',
+data:{
+labels,
+datasets:[
+{
+label:'Ventas',
+data:starts.map(x=>weekly[x].sales),
+borderColor:accent,
+backgroundColor:accent+'18',
+fill:true,
+tension:.38,
+borderWidth:3,
+pointRadius:3,
+pointHoverRadius:6,
+pointBorderWidth:2
+},
+{
+label:'Ingresos',
+data:starts.map(x=>weekly[x].income),
+borderColor:blue,
+tension:.38,
+borderWidth:2.5,
+pointRadius:2.5,
+pointHoverRadius:5
+},
+{
+label:'Gastos',
+data:starts.map(x=>weekly[x].expenses),
+borderColor:red,
+tension:.38,
+borderWidth:2.5,
+pointRadius:2.5,
+pointHoverRadius:5
+},
+{
+label:'Utilidad',
+data:starts.map(x=>weekly[x].sales-weekly[x].expenses),
+borderColor:accent2,
+tension:.38,
+borderWidth:2.5,
+pointRadius:2.5,
+pointHoverRadius:5
+}
+]
+},
+options:{
+responsive:true,
+maintainAspectRatio:false,
+interaction:{mode:'index',intersect:false},
+animation:{duration:650,easing:'easeOutQuart'},
+plugins:{
+legend:{
+position:'bottom',
+labels:{
+usePointStyle:true,
+pointStyle:'circle',
+padding:18,
+boxWidth:8
+}
+},
+tooltip:{
+backgroundColor:'rgba(20,25,35,.92)',
+titleColor:'#fff',
+bodyColor:'#fff',
+borderWidth:0,
+cornerRadius:12,
+padding:12,
+displayColors:true,
+callbacks:{
+label:ctx=>' '+ctx.dataset.label+': '+money(ctx.parsed.y)
+}
+}
+},
+scales:{
+x:{
+grid:{display:false},
+border:{display:false},
+ticks:{maxRotation:0}
+},
+y:{
+beginAtZero:true,
+border:{display:false},
+grid:{color:line+'55',drawTicks:false},
+ticks:{callback:moneyTick,padding:8}
+}
+}
+}
+});
+
+const cats=Object.entries(expenseCats).sort((a,b)=>b[1]-a[1]);
+
+globalCharts.expenses=new Chart(expenseCanvas,{
+type:'doughnut',
+data:{
+labels:cats.length?cats.map(x=>x[0]):['Sin gastos registrados'],
+datasets:[{
+data:cats.length?cats.map(x=>x[1]):[1],
+backgroundColor:cats.length
+?[
+accent,blue,red,accent2,'#f7ba55','#8bd3dd','#c084fc','#fb7185','#94a3b8','#34d399'
+].slice(0,cats.length)
+:['#94a3b8'],
+borderWidth:3,
+borderColor:getComputedStyle(document.body).getPropertyValue('--card').trim()||'#fff',
+hoverOffset:7
+}]
+},
+options:{
+responsive:true,
+maintainAspectRatio:false,
+cutout:'68%',
+animation:{duration:700,easing:'easeOutQuart'},
+plugins:{
+legend:{
+position:'bottom',
+labels:{
+usePointStyle:true,
+pointStyle:'circle',
+padding:16,
+boxWidth:8
+}
+},
+tooltip:{
+backgroundColor:'rgba(20,25,35,.92)',
+titleColor:'#fff',
+bodyColor:'#fff',
+cornerRadius:12,
+padding:12,
+callbacks:{
+label:ctx=>' '+ctx.label+': '+money(ctx.parsed)
+}
+}
+}
+}
+});
+}
 function globalDashboard(){
 
 if(globalLoading){
@@ -1768,6 +2204,30 @@ return `
 <div class="card kpi"><label>Gastos negocio</label><strong class="redtxt">${money(totalExpenses)}</strong><small>Operación de las empresas</small></div>
 <div class="card kpi"><label>Utilidad estimada</label><strong class="green">${money(totalProfit)}</strong><small>Ventas − gastos negocio</small></div>
 <div class="card kpi"><label>Caja estimada</label><strong>${money(totalCash)}</strong><small>Consolidado</small></div>
+</div>
+
+<div class="grid two" style="margin-top:13px">
+<div class="card">
+<div class="section">
+<div>
+<h2>📈 Crecimiento general</h2>
+<p class="sub">Evolución consolidada de todas las empresas por semana.</p>
+</div>
+<span class="pill">Todas las empresas</span>
+</div>
+<div class="chart"><canvas id="globalGrowthChart"></canvas></div>
+</div>
+
+<div class="card">
+<div class="section">
+<div>
+<h2>💸 Gastos del conjunto</h2>
+<p class="sub">Distribución de los gastos del conjunto de empresas.</p>
+</div>
+<span class="pill">Consolidado</span>
+</div>
+<div class="chart"><canvas id="globalExpenseChart"></canvas></div>
+</div>
 </div>
 
 <div class="card" style="margin-top:13px">
@@ -3136,6 +3596,9 @@ drawCharts,
 
 if(v==='global'&&!globalLoading&&(!globalMetrics.length||globalMetrics.length!==companies.length))
 refreshGlobalMetrics();
+
+if(v==='global'&&!globalLoading)
+setTimeout(drawGlobalCharts,30);
 
 if(v==='settings')
 setTimeout(()=>loadDeviceSessions(false),50);
