@@ -690,37 +690,31 @@ button:active,.btn:active,.nav button:active{transform:translateY(1px) scale(.97
 }
 
 
-.week-picker-wrap{position:relative;min-width:0}
-.week-picker{display:flex;align-items:center;gap:7px;min-width:0}
-.week-search-btn{white-space:nowrap}
-.week-search-popover{position:absolute;right:0;top:calc(100% + 8px);z-index:50;width:min(390px,calc(100vw - 32px));padding:10px;border:1px solid var(--line);border-radius:16px;background:var(--card);box-shadow:0 18px 45px rgba(0,0,0,.18)}
-.week-search-input-row{display:flex;gap:7px;margin-bottom:8px}
-.week-search-input-row input{min-width:0;flex:1}
-.week-search-result{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:11px;margin-top:6px;text-align:left;cursor:pointer}
-.week-search-result:hover{filter:brightness(1.04)}
-.week-search-result small{color:var(--muted);white-space:nowrap}
-.compact-search-empty{padding:10px}
-@media(max-width:620px){
- .week-picker{width:100%}
- .week-picker label{display:none}
- .week-picker select{min-width:0;flex:1;width:100%}
- .week-search-btn span{display:none}
- .week-search-popover{right:auto;left:0;width:min(390px,calc(100vw - 32px))}
- .week-header,.week-module-header{align-items:stretch}
- .week-header-actions{width:100%}
- .week-header-actions .week-picker-wrap{width:100%}
+.bootScreen{
+position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
+background:radial-gradient(circle at 50% 20%,rgba(57,217,138,.10),transparent 38%),var(--bg);
+padding:20px;
 }
+.bootCard{
+display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center;
+padding:28px 24px;border:1px solid var(--line);border-radius:22px;background:var(--card);
+box-shadow:var(--shadow);min-width:min(340px,92vw);
+}
+.bootCard .topLogo{width:64px;height:64px}
+.bootCard strong{font-size:1.05rem}
+.bootCard span{font-size:.78rem;color:var(--muted)}
 
 </style>
 </head>
 
 <body data-theme="dark">
 
-<div id="loginScreen" class="login">
+<div id="bootScreen" class="bootScreen"><div class="bootCard"><img class="topLogo" src="" data-gemelitas-logo="1" alt=""><strong>GEMELITAS A&amp;A S.A.C.</strong><span>Comprobando sesión y preparando tus datos…</span></div></div>
+<div id="loginScreen" class="login" style="display:none">
 <div class="loginBox">
 
   <div class="loginBrand">
-    <img class="loginLogo" src="" data-gemelitas-logo="1" alt="Logo Las Gemelitas A&A S.A.C." onerror="this.src=DEFAULT_COMPANY_LOGO">
+    <img class="loginLogo" src="" data-gemelitas-logo="1" alt="Logo Las Gemelitas A&A S.A.C.">
     <h2>GEMELITAS A&amp;A S.A.C.</h2>
     <p>Sistema profesional de gestión y control</p>
   </div>
@@ -761,7 +755,7 @@ button:active,.btn:active,.nav button:active{transform:translateY(1px) scale(.97
 <div class="brand">
 
 <div class="logo" style="background:#fff;padding:4px;overflow:hidden;">
-<img class="topLogo" src="" data-gemelitas-logo="1" alt="Logo GEMELITAS A&A S.A.C." onerror="this.src=DEFAULT_COMPANY_LOGO">
+<img class="topLogo" src="" data-gemelitas-logo="1" alt="Logo GEMELITAS A&A S.A.C.">
 </div>
 
 <div>
@@ -1073,6 +1067,27 @@ const ACTIVE_COMPANY_KEY='gemelitas_active_company_v2';
 function activeCompanyStorageKey(){
 return ACTIVE_COMPANY_KEY+'_'+String(currentUser?.id||'guest');
 }
+const ACTIVE_VIEW_KEY='gemelitas_active_view_v3';
+
+function activeViewStorageKey(companyId=currentCompanyId){
+return ACTIVE_VIEW_KEY+'_'+String(currentUser?.id||'guest')+'_'+String(companyId||'');
+}
+
+function getSavedView(companyId=currentCompanyId){
+try{
+const v=localStorage.getItem(activeViewStorageKey(companyId));
+return ['global','dashboard','week','income','expenses','notes','reports','settings'].includes(v)?v:null;
+}catch(e){return null;}
+}
+
+function saveActiveView(view=state.view){
+try{
+if(currentUser&&currentCompanyId&&view){
+localStorage.setItem(activeViewStorageKey(currentCompanyId),view);
+}
+}catch(e){}
+}
+
 
 const CACHE_STORE='company_cache';
 let cacheDbPromise=null;
@@ -1697,15 +1712,18 @@ ${l}
 
 }
 
-function navigateTo(view){
+async function navigateTo(view){
 if(view==='global'){
 state.view='global';
+saveActiveView('global');
 render();
+await refreshGlobalMetrics();
 return;
 }
 if(!currentCompanyId)
 return;
 state.view=view;
+saveActiveView(view);
 render();
 }
 
@@ -2126,7 +2144,7 @@ return `
 <div>
 
 <div class="dashboardHeroBrand">
-<img src="" data-company-logo="1" alt="Logo de la empresa activa" onerror="this.src=DEFAULT_COMPANY_LOGO">
+<img src="" data-company-logo="1" alt="Logo Las Gemelitas A&A S.A.C.">
 <div>
 <div class="pill">
 CONTROL CENTRALIZADO
@@ -2333,58 +2351,16 @@ const f=d=>d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'num
 return `${f(a)} al ${f(b)}`;
 }
 
-let weekSearchOpen=false;
-let weekSearchText='';
-
-function toggleWeekSearch(){
-weekSearchOpen=!weekSearchOpen;
-if(!weekSearchOpen)weekSearchText='';
-render();
-if(weekSearchOpen){
-setTimeout(()=>document.getElementById('weekSearchInput')?.focus(),40);
-}
-}
-
-function weekMatches(w){
-const q=String(weekSearchText||'').trim().toLowerCase();
-if(!q)return true;
-return [w.label,w.start,weekDateLabel(w)].join(' ').toLowerCase().includes(q);
-}
-
-function setWeekSearch(value){
-weekSearchText=value||'';
-const box=document.getElementById('weekSearchResults');
-if(box)box.innerHTML=weekSearchResultsHTML(selectedWeek());
-}
-
-function weekSearchResultsHTML(current){
-const weeks=[...state.weeks].filter(x=>x&&x.start).sort((a,b)=>String(b.start).localeCompare(String(a.start)));
-const matches=weeks.filter(weekMatches);
-if(!matches.length)return '<div class="empty compact-search-empty">No se encontró esa semana.</div>';
-return matches.slice(0,10).map(x=>`<button type="button" class="week-search-result" onclick="selectWeekFromPicker('${esc(x.id)}')"><span>📅 ${esc(x.label)}</span><small>${esc(weekDateLabel(x))}${x.id===current.id?' · Actual':''}</small></button>`).join('');
-}
-
 function compactWeekSelector(w){
 const weeks=[...state.weeks]
 .filter(x=>x&&x.start)
 .sort((a,b)=>String(a.start).localeCompare(String(b.start)));
 return `
-<div class="week-picker-wrap">
 <div class="week-picker">
 <label>Semana</label>
 <select aria-label="Seleccionar semana" onchange="selectWeekFromPicker(this.value)">
 ${weeks.map(x=>`<option value="${esc(x.id)}" ${String(x.id)===String(w.id)?'selected':''}>${esc(x.label)} · ${esc(weekDateLabel(x))}</option>`).join('')}
 </select>
-<button type="button" class="btn secondary small week-search-btn" onclick="toggleWeekSearch()" aria-label="Buscar semana">🔎 <span>Buscar</span></button>
-</div>
-${weekSearchOpen?`
-<div class="week-search-popover">
-<div class="week-search-input-row">
-<input id="weekSearchInput" type="search" value="${esc(weekSearchText)}" placeholder="Buscar por nombre o fecha…" oninput="setWeekSearch(this.value)">
-<button type="button" class="btn secondary small" onclick="toggleWeekSearch()">Cerrar</button>
-</div>
-<div id="weekSearchResults">${weekSearchResultsHTML(w)}</div>
-</div>`:''}
 </div>`;
 }
 
@@ -3131,6 +3107,7 @@ function render(){
 if(!currentCompanyId)
 return;
 
+saveActiveView(state.view);
 saveLocal();
 applyCompanyLogos();
 
@@ -3157,16 +3134,10 @@ v==='global'
 :settingsView();
 
 if(v==='dashboard')
-setTimeout(
-drawCharts,
-30
-);
+setTimeout(drawCharts,30);
 
 if(v==='global'&&!globalLoading)
 setTimeout(drawGlobalCharts,30);
-
-if(v==='global'&&!globalLoading&&(!globalMetrics.length||globalMetrics.length!==companies.length))
-refreshGlobalMetrics();
 
 if(v==='settings')
 setTimeout(()=>loadDeviceSessions(false),50);
@@ -3999,7 +3970,7 @@ console.warn('Caché local inválida',e);
 }
 
 state=localState;
-state.view='dashboard';
+state.view=getSavedView(id)||'dashboard';
 
 localRevision=0;
 
@@ -4088,7 +4059,7 @@ remotePendingSnapshot=null;
 
 }
 
-state.view='dashboard';
+state.view=getSavedView(id)||'dashboard';
 
 ensureWeek();
 
@@ -4174,11 +4145,16 @@ settings:{
 baseServerState=structuredClone(incoming);
 remotePendingSnapshot=null;
 
-state.view='dashboard';
+state.view=getSavedView(currentCompanyId)||state.view||'dashboard';
+saveActiveView(state.view);
 
 saveLocal();
 
+if(state.view==='global'){
+refreshGlobalMetrics();
+}else{
 render();
+}
 
 setStatus(
 'Sincronizado'
@@ -4391,11 +4367,8 @@ if(!id||!currentUser)
 return;
 
 if(id===currentCompanyId){
-state.view='dashboard';
-try{localStorage.setItem(
-activeCompanyStorageKey(),
-currentCompanyId
-);}catch(e){}
+state.view=getSavedView(id)||state.view||'dashboard';
+saveActiveView(state.view);
 render();
 return;
 }
@@ -4403,14 +4376,12 @@ return;
 if(localDirty)await syncNow();
 await loadCompany(id);
 
-state.view='dashboard';
-
-try{localStorage.setItem(
-activeCompanyStorageKey(),
-currentCompanyId
-);}catch(e){}
+state.view=getSavedView(id)||'dashboard';
+saveActiveView(state.view);
 
 render();
+
+if(state.view==='global')await refreshGlobalMetrics();
 
 }
 
@@ -4542,16 +4513,29 @@ let cached=null;
 try{cached=localStorage.getItem(activeCompanyStorageKey());}catch(e){}
 
 currentCompanyId=ids.includes(cached)?cached:ids[0];
-state.view='global';
 
 await loadCompany(currentCompanyId);
 
+state.view=getSavedView(currentCompanyId)||'global';
+saveActiveView(state.view);
+
 try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){}
+
+if(state.view==='global'){
+await refreshGlobalMetrics();
+}
+}
+
+function hideBootScreen(){
+const boot=document.getElementById('bootScreen');
+if(boot)boot.style.display='none';
 }
 
 function showLoginScreen(message='',isError=false){
+const boot=document.getElementById('bootScreen');
 const login=document.getElementById('loginScreen');
 const app=document.getElementById('app');
+if(boot)boot.style.display='none';
 if(app)app.style.display='none';
 if(login)login.style.display='flex';
 const msg=document.getElementById('loginMessage');
@@ -4562,8 +4546,10 @@ msg.className='loginMessage'+(isError?' error':'');
 }
 
 function showAppScreen(){
+const boot=document.getElementById('bootScreen');
 const login=document.getElementById('loginScreen');
 const app=document.getElementById('app');
+if(boot)boot.style.display='none';
 if(login)login.style.display='none';
 if(app)app.style.display='block';
 }
@@ -4589,7 +4575,6 @@ bootPromise=(async()=>{
 try{
 await registerCurrentSession(session);
 await initCompanies();
-state.view='global';
 showAppScreen();
 render();
 setStatus('Sincronizado');
@@ -4680,7 +4665,11 @@ if(button){button.disabled=false;button.classList.remove('loginBusy');}
 
 async function checkSession(){
 try{
-const {data,error}=await sb.auth.getSession();
+const result=await Promise.race([
+sb.auth.getSession(),
+new Promise((_,reject)=>setTimeout(()=>reject(new Error('La comprobación de sesión tardó demasiado.')),12000))
+]);
+const {data,error}=result;
 if(error)throw error;
 
 if(data.session){
@@ -4734,6 +4723,7 @@ bootPromise=null;
 try{localStorage.removeItem(activeCompanyStorageKey());}catch(e){}
 
 document.getElementById('app').style.display='none';
+hideBootScreen();
 document.getElementById('loginScreen').style.display='flex';
 document.getElementById('loginPassword').value='';
 document.getElementById('loginMessage').textContent='Sesión cerrada en este dispositivo.';
@@ -4875,6 +4865,7 @@ false
 window.addEventListener(
 'beforeunload',
 ()=>{
+saveActiveView();
 saveLocal();
 }
 );
@@ -4882,6 +4873,7 @@ saveLocal();
 window.addEventListener(
 'pagehide',
 ()=>{
+saveActiveView();
 saveLocal();
 }
 );
@@ -4913,6 +4905,7 @@ document.addEventListener('visibilitychange',()=>{
 if(document.visibilityState==='visible'&&currentUser){
 syncNow();
 checkCurrentSessionHealth();
+if(state.view==='global')refreshGlobalMetrics();
 }
 });
 
@@ -4949,7 +4942,7 @@ window.addEventListener(
 ()=>
 navigator.serviceWorker.register(
 './sw.js'
-)
+).then(reg=>reg.update()).catch(()=>{})
 );
 
 }
