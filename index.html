@@ -1677,7 +1677,7 @@ if(!d){
 globalMetrics.push({
 id,
 name:c?.name||'Empresa',
-sales:0,income:0,expenses:0,personal:0,profit:0,cash:0
+sales:0,income:0,expenses:0,personal:0,profit:0,cash:0,weekly:{},expenseCategories:{}
 });
 continue;
 }
@@ -1700,6 +1700,20 @@ const cash=n(d.settings?.cash)+totalIncome-totalExpenses;
 
 const name=d.settings?.name||c?.name||'Empresa';
 
+const weekly={};
+for(const w of weeks){
+const start=w.start;
+const weekSales=salesTotalLocal(w);
+const weekIncome=income.filter(x=>weekForDate(x.date)===start).reduce((s,x)=>s+n(x.amount),0);
+const weekExpenses=expenses.filter(x=>x.type==='business'&&weekForDate(x.date)===start).reduce((s,x)=>s+n(x.amount),0);
+weekly[start]={sales:weekSales,income:weekIncome,expenses:weekExpenses};
+}
+const expenseCategories={};
+for(const x of expenses.filter(x=>x.type==='business')){
+const cat=x.category||'Otros';
+expenseCategories[cat]=(expenseCategories[cat]||0)+n(x.amount);
+}
+
 globalMetrics.push({
 id,name,
 sales:totalSales,
@@ -1707,7 +1721,9 @@ income:totalIncome,
 expenses:businessExpenses,
 personal:personalExpenses,
 profit:totalSales-businessExpenses,
-cash
+cash,
+weekly,
+expenseCategories
 });
 
 }
@@ -1787,6 +1803,24 @@ return `
 <div class="card kpi"><label>Caja estimada</label><strong>${money(totalCash)}</strong><small>Consolidado</small></div>
 </div>
 
+<div class="grid two" style="margin-top:13px">
+<div class="card">
+<div class="section">
+<div><h2>📈 Crecimiento general</h2><p class="sub">Evolución consolidada de todas las empresas por semana.</p></div>
+<span class="pill">Todas las empresas</span>
+</div>
+<div class="chart"><canvas id="globalGrowthChart"></canvas></div>
+</div>
+
+<div class="card">
+<div class="section">
+<div><h2>💸 Gastos del conjunto</h2><p class="sub">Distribución de los gastos del conjunto de empresas.</p></div>
+<span class="pill">Consolidado</span>
+</div>
+<div class="chart"><canvas id="globalExpenseChart"></canvas></div>
+</div>
+</div>
+
 <div class="card" style="margin-top:13px">
 <div class="section">
 <div><h2>🏢 Empresas</h2><p class="sub">Comparación rápida de resultados por empresa.</p></div>
@@ -1804,6 +1838,55 @@ return `
 </div>
 `;
 
+}
+
+function drawGlobalCharts(){
+if(typeof Chart==='undefined')return;
+if(charts.globalGrowth)charts.globalGrowth.destroy();
+if(charts.globalExpense)charts.globalExpense.destroy();
+
+const growth=document.getElementById('globalGrowthChart');
+const expense=document.getElementById('globalExpenseChart');
+if(!growth||!expense)return;
+
+const weekly={};
+const cats={};
+for(const m of globalMetrics){
+for(const [start,v] of Object.entries(m.weekly||{})){
+if(!weekly[start])weekly[start]={sales:0,income:0,expenses:0};
+weekly[start].sales+=n(v.sales);
+weekly[start].income+=n(v.income);
+weekly[start].expenses+=n(v.expenses);
+}
+for(const [cat,val] of Object.entries(m.expenseCategories||{}))cats[cat]=(cats[cat]||0)+n(val);
+}
+
+const starts=Object.keys(weekly).sort();
+const labels=starts.map(start=>{
+const d=parseDateSafe(start);
+return d?d.toLocaleDateString('es-PE',{day:'2-digit',month:'short'}):start;
+});
+const cs=getComputedStyle(document.body);
+const a=cs.getPropertyValue('--accent').trim()||'#39d98a';
+const a2=cs.getPropertyValue('--accent2').trim()||'#6d8cff';
+const red=cs.getPropertyValue('--red').trim()||'#ff6b7a';
+const blue='#4f8cff';
+const muted=cs.getPropertyValue('--muted').trim()||'#91a4ba';
+const line=cs.getPropertyValue('--line').trim()||'#263c58';
+Chart.defaults.color=muted;
+Chart.defaults.font.family='-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif';
+Chart.defaults.font.size=12;
+const tick=v=>{v=n(v);return v>=1000?'S/ '+(v/1000).toFixed(0)+' mil':'S/ '+v.toFixed(0)};
+
+charts.globalGrowth=new Chart(growth,{type:'line',data:{labels,datasets:[
+{label:'Ventas',data:starts.map(x=>weekly[x].sales),borderColor:a,backgroundColor:a+'22',fill:true,tension:.38,borderWidth:3,pointRadius:3},
+{label:'Ingresos',data:starts.map(x=>weekly[x].income),borderColor:blue,tension:.38,borderWidth:2.5,pointRadius:2.5},
+{label:'Gastos',data:starts.map(x=>weekly[x].expenses),borderColor:red,tension:.38,borderWidth:2.5,pointRadius:2.5},
+{label:'Utilidad',data:starts.map(x=>weekly[x].sales-weekly[x].expenses),borderColor:a2,tension:.38,borderWidth:2.5,pointRadius:2.5}
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},animation:{duration:550},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+money(c.parsed.y)}}},scales:{x:{grid:{display:false},border:{display:false}},y:{beginAtZero:true,border:{display:false},grid:{color:line+'55'},ticks:{callback:tick}}}}});
+
+const entries=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+charts.globalExpense=new Chart(expense,{type:'doughnut',data:{labels:entries.length?entries.map(x=>x[0]):['Sin gastos registrados'],datasets:[{data:entries.length?entries.map(x=>x[1]):[1],backgroundColor:entries.length?[a,blue,red,a2,'#f7ba55','#8bd3dd','#c084fc','#fb7185','#94a3b8','#34d399'].slice(0,entries.length):['#94a3b8'],borderWidth:3,borderColor:cs.getPropertyValue('--card').trim()||'#fff',hoverOffset:7}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',animation:{duration:550},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{callbacks:{label:c=>' '+c.label+': '+money(c.parsed)}}}}});
 }
 
 async function openCompanyFromGlobal(id){
@@ -2875,6 +2958,9 @@ setTimeout(
 drawCharts,
 30
 );
+
+if(v==='global'&&!globalLoading)
+setTimeout(drawGlobalCharts,30);
 
 if(v==='global'&&!globalLoading&&(!globalMetrics.length||globalMetrics.length!==companies.length))
 refreshGlobalMetrics();
