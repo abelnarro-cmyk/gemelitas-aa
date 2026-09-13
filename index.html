@@ -834,12 +834,78 @@ table th{
   gap:12px;
 }
 
+
+
+/* ===== Q.PACK — control de desayunos, almuerzos y cenas ===== */
+.qpack-week-card{overflow:hidden}
+.qpack-price-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.qpack-price-grid .field:first-child{grid-column:span 1}
+.qpack-table{min-width:980px}
+.qpack-table th,.qpack-table td{vertical-align:middle}
+.qpack-table thead th{text-align:center}
+.qpack-table thead th:first-child,.qpack-table tbody td:first-child{text-align:left}
+.qpack-table input{min-width:95px;text-align:center}
+.qpack-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;padding:10px;border-radius:15px;background:color-mix(in srgb,var(--bg) 75%,transparent);border:1px solid var(--line)}
+.qpack-summary-item{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-right:1px solid var(--line)}
+.qpack-summary-item:last-child{border-right:0}
+.qpack-summary-item span{color:var(--muted);font-size:.72rem;font-weight:900}
+.qpack-summary-item b{font-size:.82rem}
+.qpack-summary-item strong{font-size:1.12rem}
+.qpack-summary-item.total{background:color-mix(in srgb,var(--accent) 9%,transparent);border-radius:12px}
+@media(max-width:900px){.qpack-price-grid{grid-template-columns:1fr 1fr}.qpack-summary{grid-template-columns:1fr 1fr}.qpack-summary-item:nth-child(2){border-right:0}}
+@media(max-width:620px){.qpack-price-grid{grid-template-columns:1fr}.qpack-summary{grid-template-columns:1fr}.qpack-summary-item{border-right:0;border-bottom:1px solid var(--line)}.qpack-summary-item:last-child{border-bottom:0}}
+
+/* ===== Arranque sin parpadeo de login ===== */
+.startupScreen{
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:
+    radial-gradient(circle at 20% 10%,rgba(79,140,255,.14),transparent 34%),
+    radial-gradient(circle at 85% 90%,rgba(57,217,138,.10),transparent 30%),
+    var(--bg);
+}
+.startupBox{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:9px;
+  min-width:230px;
+  padding:28px 30px;
+  border:1px solid var(--line);
+  border-radius:20px;
+  background:color-mix(in srgb,var(--card) 94%,transparent);
+  box-shadow:0 18px 50px rgba(20,35,55,.12);
+  text-align:center;
+}
+.startupBox strong{font-size:1rem}
+.startupBox span{font-size:.78rem;color:var(--muted)}
+.startupSpinner{
+  width:30px;height:30px;border-radius:50%;
+  border:3px solid color-mix(in srgb,var(--accent2) 18%,transparent);
+  border-top-color:var(--accent2);
+  animation:startupSpin .75s linear infinite;
+}
+@keyframes startupSpin{to{transform:rotate(360deg)}}
+
 </style>
 </head>
 
 <body data-theme="dark">
 
-<div id="loginScreen" class="login">
+<div id="startupScreen" class="startupScreen" aria-live="polite">
+  <div class="startupBox">
+    <div class="startupSpinner"></div>
+    <strong>GEMELITAS A&amp;A S.A.C.</strong>
+    <span>Comprobando sesión…</span>
+  </div>
+</div>
+
+<div id="loginScreen" class="login" style="display:none">
 <div class="loginBox">
 
   <div class="loginBrand">
@@ -1206,9 +1272,28 @@ const DEVICE_ID_KEY='gemelitas_device_id_v2';
 const SOUND_KEY='gemelitas_button_sound_v1';
 const CACHE_DB_NAME='gemelitas_local_cache_v2';
 const ACTIVE_COMPANY_KEY='gemelitas_active_company_v2';
+const ACTIVE_VIEW_KEY='gemelitas_active_view_v1';
+const VALID_VIEWS=new Set(['global','dashboard','week','income','expenses','notes','reports','settings']);
 
 function activeCompanyStorageKey(){
 return ACTIVE_COMPANY_KEY+'_'+String(currentUser?.id||'guest');
+}
+
+function activeViewStorageKey(companyId=currentCompanyId){
+return ACTIVE_VIEW_KEY+'_'+String(currentUser?.id||'guest')+'_'+String(companyId||'');
+}
+
+function saveActiveView(view,companyId=currentCompanyId){
+if(!VALID_VIEWS.has(view)||!companyId)return;
+try{localStorage.setItem(activeViewStorageKey(companyId),view);}catch(e){}
+}
+
+function getSavedActiveView(companyId=currentCompanyId){
+if(!companyId)return null;
+try{
+const view=localStorage.getItem(activeViewStorageKey(companyId));
+return VALID_VIEWS.has(view)?view:null;
+}catch(e){return null;}
 }
 
 const CACHE_STORE='company_cache';
@@ -1729,6 +1814,76 @@ x.setDate(x.getDate()+diff);
 return x.toISOString().slice(0,10);
 }
 
+function isQpackCompany(){
+const selected=companies.find(c=>String(c.id)===String(currentCompanyId));
+const name=String(state?.settings?.name||selected?.name||'').trim().toUpperCase();
+return name==='Q.PACK'||name==='QPACK';
+}
+
+function createQpackMealDays(sourceDays=null){
+return Object.fromEntries(DAYS.map(d=>[d,{
+  
+    breakfast:n(sourceDays?.[d]?.breakfast),
+    lunch:n(sourceDays?.[d]?.lunch),
+    dinner:n(sourceDays?.[d]?.dinner)
+  }]));
+}
+
+function normalizeQpackWeek(w){
+if(!w)return false;
+let changed=false;
+const legacyDays=w.days||{};
+if(!w.qpack||typeof w.qpack!=='object')w.qpack={};
+if(!w.qpack.prices||typeof w.qpack.prices!=='object'){
+  w.qpack.prices={breakfast:6,lunch:7,dinner:7};
+  changed=true;
+}else{
+  const defaults={breakfast:6,lunch:7,dinner:7};
+  for(const meal of Object.keys(defaults)){
+    if(!Number.isFinite(Number(w.qpack.prices[meal]))||Number(w.qpack.prices[meal])<0){
+      w.qpack.prices[meal]=defaults[meal];
+      changed=true;
+    }
+  }
+}
+if(!w.qpack.days||typeof w.qpack.days!=='object'){
+  w.qpack.days=createQpackMealDays();
+  for(const d of DAYS){
+    // La cantidad histórica de "menús empresa" se conserva como desayunos
+    // para Q.PACK, tal como corresponde a la nueva organización del control.
+    const legacy=n(legacyDays[d]);
+    if(legacy)w.qpack.days[d].breakfast=legacy;
+  }
+  changed=true;
+}else{
+  for(const d of DAYS){
+    if(!w.qpack.days[d]||typeof w.qpack.days[d]!=='object'){
+      w.qpack.days[d]={breakfast:0,lunch:0,dinner:0};
+      changed=true;
+    }
+    for(const meal of ['breakfast','lunch','dinner']){
+      if(!Number.isFinite(Number(w.qpack.days[d][meal]))||Number(w.qpack.days[d][meal])<0){
+        w.qpack.days[d][meal]=0;
+        changed=true;
+      }
+    }
+  }
+}
+return changed;
+}
+
+function normalizeQpackWeeks(){
+if(!isQpackCompany()||!Array.isArray(state.weeks))return false;
+let changed=false;
+for(const w of state.weeks)if(normalizeQpackWeek(w))changed=true;
+return changed;
+}
+
+function ensureQpackWeek(w){
+if(isQpackCompany())normalizeQpackWeek(w);
+return w;
+}
+
 function ensureWeek(
 start=weekForDate(today())
 ){
@@ -1751,6 +1906,12 @@ days:Object.fromEntries(
 DAYS.map(d=>[d,0])
 )
 };
+if(isQpackCompany()){
+  w.qpack={
+    prices:{breakfast:6,lunch:7,dinner:7},
+    days:createQpackMealDays()
+  };
+}
 
 state.weeks.push(w);
 
@@ -1758,7 +1919,7 @@ saveLocal();
 
 }
 
-return w;
+return ensureQpackWeek(w);
 
 }
 
@@ -1775,16 +1936,29 @@ return w;
 
 }
 
+function qpackMealTotals(w){
+ensureQpackWeek(w);
+const prices=w?.qpack?.prices||{breakfast:6,lunch:7,dinner:7};
+const out={
+  breakfastQty:0,breakfastMoney:0,
+  lunchQty:0,lunchMoney:0,
+  dinnerQty:0,dinnerMoney:0
+};
+for(const d of DAYS){
+  const day=w?.qpack?.days?.[d]||{};
+  const b=n(day.breakfast),l=n(day.lunch),c=n(day.dinner);
+  out.breakfastQty+=b; out.breakfastMoney+=b*n(prices.breakfast);
+  out.lunchQty+=l; out.lunchMoney+=l*n(prices.lunch);
+  out.dinnerQty+=c; out.dinnerMoney+=c*n(prices.dinner);
+}
+out.totalQty=out.breakfastQty+out.lunchQty+out.dinnerQty;
+out.totalMoney=out.breakfastMoney+out.lunchMoney+out.dinnerMoney;
+return out;
+}
+
 function weekTotal(w){
-
-return DAYS.reduce(
-(s,d)=>
-s+
-n(w.days?.[d])*
-n(w.price),
-0
-);
-
+if(isQpackCompany()||w?.qpack)return qpackMealTotals(w).totalMoney;
+return DAYS.reduce((s,d)=>s+n(w.days?.[d])*n(w.price),0);
 }
 
 function extrasForWeek(w){
@@ -1887,6 +2061,18 @@ return a;
 
 }
 
+function weekTotalForCompanyData(w,companyData){
+const companyName=String(companyData?.settings?.name||'').trim().toUpperCase();
+if(companyName==='Q.PACK'||companyName==='QPACK'){
+  const prices=w?.qpack?.prices||{breakfast:6,lunch:7,dinner:7};
+  return DAYS.reduce((sum,d)=>{
+    const day=w?.qpack?.days?.[d]||{};
+    return sum+n(day.breakfast)*n(prices.breakfast)+n(day.lunch)*n(prices.lunch)+n(day.dinner)*n(prices.dinner);
+  },0);
+}
+return DAYS.reduce((sum,day)=>sum+n(w?.days?.[day])*n(w?.price),0);
+}
+
 function nav(){
 
 const items=[
@@ -1914,14 +2100,16 @@ ${l}
 }
 
 function navigateTo(view){
+if(!VALID_VIEWS.has(view))return;
 if(view==='global'){
 state.view='global';
+saveActiveView('global');
 render();
 return;
 }
-if(!currentCompanyId)
-return;
+if(!currentCompanyId)return;
 state.view=view;
+saveActiveView(view);
 render();
 }
 
@@ -1996,7 +2184,7 @@ const income=Array.isArray(d.income)?d.income:[];
 const expenses=Array.isArray(d.expenses)?d.expenses:[];
 
 const salesTotalLocal=w=>
-DAYS.reduce((sum,day)=>sum+n(w?.days?.[day])*n(w?.price),0)+
+weekTotalForCompanyData(w,d)+
 sales.filter(x=>weekForDate(x?.date)===w?.start)
 .reduce((sum,x)=>sum+n(x?.qty)*n(x?.price),0);
 
@@ -2092,7 +2280,7 @@ const income=Array.isArray(fallback.income)?fallback.income:[];
 const expenses=Array.isArray(fallback.expenses)?fallback.expenses:[];
 
 const salesTotalLocal=w=>
-DAYS.reduce((sum,day)=>sum+n(w?.days?.[day])*n(w?.price),0)+
+weekTotalForCompanyData(w,d)+
 sales.filter(x=>weekForDate(x?.date)===w?.start)
 .reduce((sum,x)=>sum+n(x?.qty)*n(x?.price),0);
 
@@ -2368,6 +2556,7 @@ if(localDirty)await syncNow();
 await loadCompany(id);
 
 state.view='dashboard';
+saveActiveView('dashboard');
 
 try{localStorage.setItem(
 activeCompanyStorageKey(),
@@ -2745,354 +2934,70 @@ return state.expenses
 .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
 }
 
-function weekView(){
+function qpackWeekView(w){
+ensureQpackWeek(w);
+const q=qpackMealTotals(w);
+const prices=w.qpack.prices;
+return `
+<div class="card qpack-week-card">
+<div class="notice" style="margin-bottom:12px"><b>📆 Periodo:</b> ${esc(weekRangeLabel(w))}</div>
+<div class="qpack-price-grid">
+<div class="field"><label>Nombre semana</label><input value="${esc(w.label)}" onchange="wedit('label',this.value)"></div>
+<div class="field"><label>Precio menú desayuno</label><input type="number" min="0" step=".01" value="${n(prices.breakfast)}" onchange="qpackPriceEdit('breakfast',this.value)"></div>
+<div class="field"><label>Precio menú almuerzo</label><input type="number" min="0" step=".01" value="${n(prices.lunch)}" onchange="qpackPriceEdit('lunch',this.value)"></div>
+<div class="field"><label>Precio menú cena</label><input type="number" min="0" step=".01" value="${n(prices.dinner)}" onchange="qpackPriceEdit('dinner',this.value)"></div>
+</div>
+<div class="tablewrap qpack-table-wrap">
+<table class="qpack-table">
+<thead><tr><th rowspan="2">Día</th><th colspan="2">☀️ Desayuno</th><th colspan="2">🍴 Almuerzo</th><th colspan="2">🌙 Cena</th><th rowspan="2">Total del día<br>(S/)</th></tr>
+<tr><th>Cantidad</th><th>Monto (S/)</th><th>Cantidad</th><th>Monto (S/)</th><th>Cantidad</th><th>Monto (S/)</th></tr></thead>
+<tbody>${DAYS.map(d=>{
+const day=w.qpack.days[d]||{};
+const b=n(day.breakfast),l=n(day.lunch),c=n(day.dinner);
+const bm=b*n(prices.breakfast),lm=l*n(prices.lunch),cm=c*n(prices.dinner);
+return `<tr><td><b>${d}</b></td>
+<td><input type="number" min="0" step="1" value="${b}" onchange="qpackDayEdit('${d}','breakfast',this.value)"></td><td>${money(bm)}</td>
+<td><input type="number" min="0" step="1" value="${l}" onchange="qpackDayEdit('${d}','lunch',this.value)"></td><td>${money(lm)}</td>
+<td><input type="number" min="0" step="1" value="${c}" onchange="qpackDayEdit('${d}','dinner',this.value)"></td><td>${money(cm)}</td>
+<td><b>${money(bm+lm+cm)}</b></td></tr>`;
+}).join('')}</tbody>
+</table>
+</div>
+<div class="qpack-summary">
+<div class="qpack-summary-item"><span>☀️ Total desayunos</span><b>${q.breakfastQty} pedidos</b><strong>${money(q.breakfastMoney)}</strong></div>
+<div class="qpack-summary-item"><span>🍴 Total almuerzos</span><b>${q.lunchQty} pedidos</b><strong>${money(q.lunchMoney)}</strong></div>
+<div class="qpack-summary-item"><span>🌙 Total cenas</span><b>${q.dinnerQty} pedidos</b><strong>${money(q.dinnerMoney)}</strong></div>
+<div class="qpack-summary-item total"><span>🧾 Total general</span><b>${q.totalQty} pedidos</b><strong>${money(q.totalMoney)}</strong></div>
+</div>
+</div>`;
+}
 
+function standardWeekView(w){
+return `
+<div class="card">
+<div class="notice" style="margin-bottom:12px"><b>📆 Periodo:</b> ${esc(weekRangeLabel(w))}</div>
+<div class="form">
+<div class="field"><label>Nombre semana</label><input value="${esc(w.label)}" onchange="wedit('label',this.value)"></div>
+<div class="field"><label>Precio menú empresa</label><input type="number" step=".01" value="${w.price}" onchange="wedit('price',this.value)"></div>
+</div>
+<div class="tablewrap"><table><thead><tr><th>Día</th><th>Menús empresa</th><th>Total</th></tr></thead><tbody>${DAYS.map(d=>`<tr><td>${d}</td><td><input type="number" min="0" value="${n(w.days?.[d])}" onchange="dayedit('${d}',this.value)"></td><td>${money(n(w.days?.[d])*n(w.price))}</td></tr>`).join('')}</tbody></table></div>
+<div class="section"><h2>Total empresa: <span class="green">${money(weekTotal(w))}</span></h2><span class="pill">${DAYS.reduce((s,d)=>s+n(w.days?.[d]),0)} menús</span></div>
+<div class="notice">Este total sirve como referencia para revisar cuánto corresponde cobrar a la empresa. El dinero recibido se registra aparte en <b>Ingresos</b>.</div>
+</div>`;
+}
+
+function weekView(){
 const w=selectedWeek();
 const incomes=weekIncomeList(w);
 const expenses=weekExpenseList(w);
 const businessExpenses=expenses.filter(x=>x.type==='business');
 const personalExpenses=expenses.filter(x=>x.type==='personal');
-
 return `
-
 ${searchWeekCard(w)}
-
-<div class="section">
-
-<h2>
-📅 Control de ${esc(w.label)}
-</h2>
-
-<div class="row">
-
-<input
-style="width:160px"
-type="date"
-value="${w.start}"
-onchange="
-state.currentWeek=weekForDate(this.value);
-render();
-">
-
-<button
-class="btn secondary small"
-onclick="newWeek()">
-+ Nueva semana
-</button>
-
-</div>
-
-</div>
-
-<div class="card">
-
-<div class="notice" style="margin-bottom:12px">
-<b>📆 Periodo:</b> ${esc(weekRangeLabel(w))}
-</div>
-
-<div class="form">
-
-<div class="field">
-
-<label>
-Nombre semana
-</label>
-
-<input
-value="${esc(w.label)}"
-onchange="wedit('label',this.value)"
->
-
-</div>
-
-<div class="field">
-
-<label>
-Precio menú empresa
-</label>
-
-<input
-type="number"
-step=".01"
-value="${w.price}"
-onchange="wedit('price',this.value)"
->
-
-</div>
-
-</div>
-
-<div class="tablewrap">
-
-<table>
-
-<thead>
-
-<tr>
-<th>Día</th>
-<th>Menús empresa</th>
-<th>Total</th>
-</tr>
-
-</thead>
-
-<tbody>
-
-${DAYS.map(
-d=>
-`
-<tr>
-
-<td>${d}</td>
-
-<td>
-
-<input
-type="number"
-min="0"
-value="${n(w.days?.[d])}"
-onchange="dayedit('${d}',this.value)"
->
-
-</td>
-
-<td>
-${money(n(w.days?.[d])*n(w.price))}
-</td>
-
-</tr>
-`
-).join('')}
-
-</tbody>
-
-</table>
-
-</div>
-
-<div class="section">
-
-<h2>
-
-Total empresa:
-
-<span class="green">
-${money(weekTotal(w))}
-</span>
-
-</h2>
-
-<span class="pill">
-
-${DAYS.reduce(
-(s,d)=>s+n(w.days?.[d]),
-0
-)}
-menús
-
-</span>
-
-</div>
-
-<div class="notice">
-
-Este total sirve como referencia
-para revisar cuánto corresponde cobrar
-a la empresa.
-
-El dinero recibido se registra aparte
-en <b>Ingresos</b>.
-
-</div>
-
-</div>
-
-<div class="card">
-
-<div class="section">
-
-<h2>
-➕ Ventas adicionales
-</h2>
-
-<span>
-Total:
-<b>${money(extrasForWeek(w))}</b>
-</span>
-
-</div>
-
-<div class="form">
-
-<div class="field">
-
-<label>Fecha</label>
-
-<input
-type="date"
-id="sdate"
-value="${today()}"
->
-
-</div>
-
-<div class="field">
-
-<label>Producto</label>
-
-<input
-id="sprod"
-placeholder="Menú, gaseosa..."
->
-
-</div>
-
-<div class="field">
-
-<label>Cantidad</label>
-
-<input
-id="sqty"
-type="number"
-value="1"
->
-
-</div>
-
-<div class="field">
-
-<label>Precio</label>
-
-<input
-id="sprice"
-type="number"
-step=".01"
-placeholder="0.00"
->
-
-</div>
-
-<button
-class="btn"
-onclick="addSale()">
-Agregar
-</button>
-
-</div>
-
-${listSales(w)}
-
-</div>
-
-<div class="grid two" style="margin-top:13px">
-
-<div class="card">
-
-<div class="section">
-<div>
-<h2>💵 Ingresos de la semana</h2>
-<p class="sub">${esc(w.label)} · ${esc(weekRangeLabel(w))}</p>
-</div>
-<span class="pill">${money(incomeForWeek(w))}</span>
-</div>
-
-${
-incomes.length
-? incomes.map(x=>itemIncome(x)).join('')
-: '<div class="empty">No hay ingresos registrados para esta semana.</div>'
-}
-
-</div>
-
-<div class="card">
-
-<div class="section">
-<div>
-<h2>💸 Gastos de la semana</h2>
-<p class="sub">${esc(w.label)} · ${esc(weekRangeLabel(w))}</p>
-</div>
-<span class="pill">${money(businessExpenses.reduce((s,x)=>s+n(x.amount),0))}</span>
-</div>
-
-${
-expenses.length
-? expenses.map(x=>expenseItem(x)).join('')
-: '<div class="empty">No hay gastos registrados para esta semana.</div>'
-}
-
-</div>
-
-</div>
-
-<div class="card" style="margin-top:13px">
-<div class="notice">
-📌 <b>Resumen de ${esc(w.label)}:</b>
-Ingresos ${money(incomeForWeek(w))} ·
-Gastos negocio ${money(businessExpenses.reduce((s,x)=>s+n(x.amount),0))} ·
-Gastos personales ${money(personalExpenses.reduce((s,x)=>s+n(x.amount),0))}
-</div>
-</div>
-
-`;
-}
-
-function listSales(w){
-
-const a=
-state.sales.filter(
-x=>weekForDate(x.date)===w.start
-);
-
-if(!a.length)
-return '<div class="empty">Sin ventas adicionales.</div>';
-
-return a.map(
-x=>
-`
-<div class="item">
-
-<div>
-
-<b>
-${esc(x.product)}
-</b>
-
-<small>
-${x.date} ·
-${x.qty} ×
-${money(x.price)}
-</small>
-
-</div>
-
-<div>
-
-<b>
-${money(x.qty*x.price)}
-</b>
-
-<div class="actions">
-
-<button
-class="btn secondary small"
-onclick="editSale('${x.id}')">
-✏️
-</button>
-
-<button
-class="btn secondary small"
-onclick="deleteSale('${x.id}')">
-🗑
-</button>
-
-</div>
-
-</div>
-
-</div>
-`
-).join('');
-
+<div class="section"><h2>📅 Control de ${esc(w.label)}</h2><div class="row"><input style="width:160px" type="date" value="${w.start}" onchange="state.currentWeek=weekForDate(this.value);render();"><button class="btn secondary small" onclick="newWeek()">+ Nueva semana</button></div></div>
+${isQpackCompany()?qpackWeekView(w):standardWeekView(w)}
+<div class="card" style="margin-top:13px"><div class="section"><h2>➕ Ventas adicionales</h2><span>Total: <b>${money(extrasForWeek(w))}</b></span></div><div class="form"><div class="field"><label>Fecha</label><input type="date" id="sdate" value="${today()}"></div><div class="field"><label>Producto</label><input id="sprod" placeholder="Menú, gaseosa..."></div><div class="field"><label>Cantidad</label><input id="sqty" type="number" value="1"></div><div class="field"><label>Precio</label><input id="sprice" type="number" step=".01" placeholder="0.00"></div><button class="btn" onclick="addSale()">Agregar</button></div>${listSales(w)}</div>
+<div class="grid two" style="margin-top:13px"><div class="card"><h3>💰 Ingresos de la semana</h3><p class="sub">${incomes.length?money(incomeForWeek(w)):'Sin ingresos registrados.'}</p></div><div class="card"><h3>💸 Gastos de la semana</h3><p class="sub">${expenses.length?money(businessExpenses.reduce((s,x)=>s+n(x.amount),0)):'Sin gastos registrados.'}</p></div></div>`;
 }
 
 function incomeView(){
@@ -3922,6 +3827,26 @@ setTimeout(()=>loadDeviceSessions(false),50);
 
 }
 
+function qpackPriceEdit(meal,v){
+const w=selectedWeek();
+ensureQpackWeek(w);
+const p=n(v);
+if(p<0){alert('El precio no puede ser negativo.');return;}
+w.qpack.prices[meal]=p;
+queueSync();
+render();
+}
+
+function qpackDayEdit(day,meal,v){
+const w=selectedWeek();
+ensureQpackWeek(w);
+const q=n(v);
+if(q<0){alert('La cantidad no puede ser negativa.');return;}
+w.qpack.days[day][meal]=q;
+queueSync();
+render();
+}
+
 function wedit(k,v){
 
 selectedWeek()[k]=
@@ -4710,20 +4635,20 @@ throw new Error('No se pudieron cargar tus empresas. '+(error.message||'Verifica
 return [...new Set((data||[]).map(x=>x.company_id).filter(Boolean))];
 }
 
-async function loadCompany(id){
+async function loadCompany(id,options={}){
 if(!id||!currentUser?.id)return false;
 currentCompanyId=String(id); loading=true; setStatus('Cargando empresa…');
 if(realtimeChannel){try{await sb.removeChannel(realtimeChannel);}catch(e){} realtimeChannel=null;}
 localRevision=0; localDirty=false; remotePendingSnapshot=null; baseServerState=null;
 let serverData=null;
 try{const {data,error}=await sb.from('company_app_data').select('company_id,data,updated_at').eq('company_id',id).maybeSingle();if(error)throw error;serverData=data||null;}catch(error){
- const cached=await readLocalCache(id); state=cached?{...structuredClone(DEFAULT),...cached,settings:{...DEFAULT.settings,...(cached.settings||{})}}:structuredClone(DEFAULT); state.view='dashboard'; ensureWeek(); baseServerState=structuredClone(state); loading=false; updateCompanySelect(); render(); setStatus('Sin conexión · usando datos locales',false); return false;
+ const cached=await readLocalCache(id); state=cached?{...structuredClone(DEFAULT),...cached,settings:{...DEFAULT.settings,...(cached.settings||{})}}:structuredClone(DEFAULT); baseServerState=structuredClone(state); const migratedQpack=normalizeQpackWeeks(); state.view=options.restoreView?(getSavedActiveView(currentCompanyId)||'dashboard'):'dashboard'; ensureWeek(); loading=false; if(migratedQpack)localDirty=true; updateCompanySelect(); render(); setStatus('Sin conexión · usando datos locales',false); return false;
 }
 if(serverData?.data){const incoming=serverData.data;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(state);}else{state=structuredClone(DEFAULT);baseServerState=structuredClone(state);}
-const appearance=getGlobalAppearance();state.settings.theme=appearance.theme;state.settings.font=appearance.font;state.view='dashboard';ensureWeek();loading=false;
-if(!serverData?.data){localDirty=true;const saved=await persist();if(!saved){await writeIndexedCache(id,state);setStatus('Empresa nueva · pendiente de sincronizar',false);}}else{await writeIndexedCache(id,state);try{localStorage.removeItem('gemelitas_cache_'+id);}catch(e){}setStatus('Sincronizado');}
+const appearance=getGlobalAppearance();state.settings.theme=appearance.theme;state.settings.font=appearance.font;const migratedQpack=normalizeQpackWeeks();state.view=options.restoreView?(getSavedActiveView(currentCompanyId)||'dashboard'):'dashboard';ensureWeek();loading=false;if(migratedQpack)localDirty=true;
+if(!serverData?.data){localDirty=true;const saved=await persist();if(!saved){await writeIndexedCache(id,state);setStatus('Empresa nueva · pendiente de sincronizar',false);}}else{await writeIndexedCache(id,state);try{localStorage.removeItem('gemelitas_cache_'+id);}catch(e){}if(migratedQpack){await persist();}else{setStatus('Sincronizado');}}
 updateCompanySelect();render();
-try{realtimeChannel=sb.channel('company_app_data_'+id).on('postgres_changes',{event:'*',schema:'public',table:'company_app_data',filter:'company_id=eq.'+id},payload=>{const incoming=payload?.new?.data;if(!incoming||String(payload?.new?.company_id)!==String(currentCompanyId))return;if(localDirty){remotePendingSnapshot=structuredClone(incoming);setStatus('Cambios de otro dispositivo pendientes',false);return;}const incomingTime=Date.parse(incoming.updatedAt||payload?.new?.updated_at||'');const localTime=Date.parse(state.updatedAt||'');if(Number.isFinite(incomingTime)&&Number.isFinite(localTime)&&incomingTime<=localTime)return;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(incoming);remotePendingSnapshot=null;state.view='dashboard';saveLocal();render();setStatus('Sincronizado');}).subscribe(status=>{if(status==='SUBSCRIBED')setStatus('Sincronizado');});}catch(e){console.warn('No se pudo activar la sincronización en tiempo real.',e);}
+try{realtimeChannel=sb.channel('company_app_data_'+id).on('postgres_changes',{event:'*',schema:'public',table:'company_app_data',filter:'company_id=eq.'+id},payload=>{const incoming=payload?.new?.data;if(!incoming||String(payload?.new?.company_id)!==String(currentCompanyId))return;if(localDirty){remotePendingSnapshot=structuredClone(incoming);setStatus('Cambios de otro dispositivo pendientes',false);return;}const incomingTime=Date.parse(incoming.updatedAt||payload?.new?.updated_at||'');const localTime=Date.parse(state.updatedAt||'');if(Number.isFinite(incomingTime)&&Number.isFinite(localTime)&&incomingTime<=localTime)return;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(incoming);remotePendingSnapshot=null;normalizeQpackWeeks();saveLocal();render();setStatus('Sincronizado');}).subscribe(status=>{if(status==='SUBSCRIBED')setStatus('Sincronizado');});}catch(e){console.warn('No se pudo activar la sincronización en tiempo real.',e);}
 try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){} return true;
 }
 
@@ -4847,6 +4772,7 @@ return;
 
 if(id===currentCompanyId){
 state.view='dashboard';
+saveActiveView('dashboard');
 try{localStorage.setItem(
 activeCompanyStorageKey(),
 currentCompanyId
@@ -4859,6 +4785,7 @@ if(localDirty)await syncNow();
 await loadCompany(id);
 
 state.view='dashboard';
+saveActiveView('dashboard');
 
 try{localStorage.setItem(
 activeCompanyStorageKey(),
@@ -4883,7 +4810,7 @@ try{
  currentCompanyId=id;
  await removeAllLocalCacheForCompany(id);
  const loaded=await loadCompany(id);if(!loaded)throw new Error('La empresa fue creada, pero no pudo abrirse correctamente.');
- state.settings.name=cleanName;state.view='dashboard';queueSync();if(!(await syncNow()))throw new Error('La empresa se creó, pero no pudo guardarse su estado inicial.');
+ state.settings.name=cleanName;state.view='dashboard';saveActiveView('dashboard');queueSync();if(!(await syncNow()))throw new Error('La empresa se creó, pero no pudo guardarse su estado inicial.');
  try{localStorage.setItem(activeCompanyStorageKey(),id);}catch(e){}updateCompanySelect();render();setStatus('Empresa nueva · lista para usar');
 }catch(e){
  console.error('createCompany:',e);currentCompanyId=previousId;if(previousId){try{await loadCompany(previousId);}catch(err){console.error(err);}}setStatus('No se pudo crear la empresa',false);alert('No se pudo crear la empresa. '+authErrorText(e));
@@ -4892,10 +4819,10 @@ try{
 
 async function deleteCurrentCompany(){
 if(companies.length<=1){alert('Debes conservar al menos una empresa.');return;}const company=companies.find(c=>String(c.id)===String(currentCompanyId));const name=state.settings.name||company?.name||'esta empresa';const confirmation=prompt(`Esta acción es PERMANENTE y borrará todos los datos de "${name}".\n\nEscribe exactamente el nombre de la empresa para confirmar:`);if(confirmation!==name){alert('No se eliminó la empresa. El nombre de confirmación no coincide.');return;}const deletedId=String(currentCompanyId);const remaining=companies.filter(c=>String(c.id)!==deletedId);const nextId=String(remaining[0].id);setStatus('Eliminando empresa…');
-try{if(localDirty)await syncNow();const {error}=await sb.rpc('delete_company_for_current_user',{p_company_id:deletedId});if(error)throw error;await removeAllLocalCacheForCompany(deletedId);if(realtimeChannel){try{await sb.removeChannel(realtimeChannel);}catch(e){}realtimeChannel=null;}companies=remaining;currentCompanyId=nextId;globalMetrics=[];globalMetricsUserId=null;globalMetricsErrors=[];try{localStorage.setItem(activeCompanyStorageKey(),nextId);}catch(e){}await loadCompany(nextId);state.view='dashboard';updateCompanySelect();render();alert('Empresa eliminada correctamente.');}catch(e){console.error('deleteCurrentCompany:',e);setStatus('No se pudo eliminar la empresa',false);alert('No se pudo eliminar la empresa. '+authErrorText(e));}
+try{if(localDirty)await syncNow();const {error}=await sb.rpc('delete_company_for_current_user',{p_company_id:deletedId});if(error)throw error;await removeAllLocalCacheForCompany(deletedId);if(realtimeChannel){try{await sb.removeChannel(realtimeChannel);}catch(e){}realtimeChannel=null;}companies=remaining;currentCompanyId=nextId;globalMetrics=[];globalMetricsUserId=null;globalMetricsErrors=[];try{localStorage.setItem(activeCompanyStorageKey(),nextId);}catch(e){}await loadCompany(nextId);state.view='dashboard';saveActiveView('dashboard');updateCompanySelect();render();alert('Empresa eliminada correctamente.');}catch(e){console.error('deleteCurrentCompany:',e);setStatus('No se pudo eliminar la empresa',false);alert('No se pudo eliminar la empresa. '+authErrorText(e));}
 }
 
-async function initCompanies(){
+async function initCompanies(restoreView=false){
 const ids=await getMemberships();
 
 if(!ids.length){
@@ -4926,14 +4853,14 @@ let cached=null;
 try{cached=localStorage.getItem(activeCompanyStorageKey());}catch(e){}
 
 currentCompanyId=ids.includes(cached)?cached:ids[0];
-state.view='global';
-
-await loadCompany(currentCompanyId);
+await loadCompany(currentCompanyId,{restoreView});
 
 try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){}
 }
 
 function showLoginScreen(message='',isError=false){
+const startup=document.getElementById('startupScreen');
+if(startup)startup.style.display='none';
 const login=document.getElementById('loginScreen');
 const app=document.getElementById('app');
 if(app)app.style.display='none';
@@ -4946,6 +4873,8 @@ msg.className='loginMessage'+(isError?' error':'');
 }
 
 function showAppScreen(){
+const startup=document.getElementById('startupScreen');
+if(startup)startup.style.display='none';
 const login=document.getElementById('loginScreen');
 const app=document.getElementById('app');
 if(login)login.style.display='none';
@@ -4972,7 +4901,7 @@ currentUser=session.user;
 bootPromise=(async()=>{
 try{
 await registerCurrentSession(session);
-await initCompanies();
+await initCompanies(source==='restore');
 
 /* General es la pantalla principal: sus datos deben estar preparados
    antes de mostrar la aplicación, no después de entrar a Inicio. */
@@ -4981,7 +4910,7 @@ globalMetricsUserId=null;
 globalMetricsErrors=[];
 await refreshGlobalMetrics();
 
-state.view='global';
+if(source!=='restore'){state.view='global';saveActiveView('global');}
 showAppScreen();
 render();
 setStatus(globalMetricsErrors.length?'General cargado · revisa conexión':'Sincronizado',!globalMetricsErrors.length);
@@ -5116,6 +5045,18 @@ alert('No se pudo cerrar la sesión local. Intenta nuevamente.');
 return;
 }
 
+const loggedOutUserId=currentUser?.id||null;
+try{
+if(userActiveCompanyKey)localStorage.removeItem(userActiveCompanyKey);
+if(loggedOutUserId){
+  const prefix=ACTIVE_VIEW_KEY+'_'+String(loggedOutUserId)+'_';
+  for(let i=localStorage.length-1;i>=0;i--){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith(prefix))localStorage.removeItem(k);
+  }
+}
+}catch(e){}
+
 currentUser=null;
 currentCompanyId=null;
 companies=[];
@@ -5126,10 +5067,6 @@ localDirty=false;
 remotePendingSnapshot=null;
 baseServerState=null;
 bootPromise=null;
-
-try{
-if(userActiveCompanyKey)localStorage.removeItem(userActiveCompanyKey);
-}catch(e){}
 
 document.getElementById('app').style.display='none';
 document.getElementById('loginScreen').style.display='flex';
