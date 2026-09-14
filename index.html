@@ -836,12 +836,18 @@ table th{
 
 /* ===== Q.PACK — personalización exclusiva ===== */
 .qpack-week-card{overflow:hidden}
+.qpack-period{margin-bottom:12px}
 .qpack-price-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px}
-.qpack-table{min-width:980px}
-.qpack-table th,.qpack-table td{vertical-align:middle}
-.qpack-table thead th{text-align:center}
+.qpack-price-input{display:flex;align-items:center;gap:6px}
+.qpack-price-input>span{font-weight:900;color:var(--muted)}
+.qpack-price-input input{flex:1;min-width:0}
+.qpack-table{min-width:1120px}
+.qpack-table th,.qpack-table td{vertical-align:middle;text-align:center}
+.qpack-table thead th{font-size:.66rem}
 .qpack-table thead th:first-child,.qpack-table tbody td:first-child{text-align:left}
-.qpack-table input{min-width:88px;text-align:center}
+.qpack-table thead tr:first-child th{background:color-mix(in srgb,var(--accent2) 8%,var(--card))}
+.qpack-table thead tr:nth-child(2) th{font-size:.61rem}
+.qpack-table input.qpack-qty{width:88px;min-width:88px;text-align:center;padding:7px}
 .qpack-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;padding:10px;border-radius:15px;background:color-mix(in srgb,var(--bg) 75%,transparent);border:1px solid var(--line)}
 .qpack-summary-item{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-right:1px solid var(--line)}
 .qpack-summary-item:last-child{border-right:0}
@@ -1785,22 +1791,78 @@ return Object.fromEntries(DAYS.map(d=>[d,{breakfast:n(sourceDays?.[d]?.breakfast
 function normalizeQpackWeek(w){
 if(!w||!isQpackCompany())return false;
 let changed=false;
-const legacyDays=w.days||{};
+const legacyDays=(w.days&&typeof w.days==='object')?w.days:{};
 const defaults={breakfast:6,lunch:7,dinner:7};
+
 if(!w.qpack||typeof w.qpack!=='object'){
   w.qpack={prices:{...defaults},days:createQpackMealDays()};
-  for(const d of DAYS){const legacy=n(legacyDays[d]);if(legacy)w.qpack.days[d].breakfast=legacy;}
+  for(const d of DAYS){
+    const legacy=n(legacyDays[d]);
+    if(legacy)w.qpack.days[d].breakfast=legacy;
+  }
   changed=true;
 }else{
-  if(!w.qpack.prices||typeof w.qpack.prices!=='object'){w.qpack.prices={...defaults};changed=true;}
-  for(const meal of Object.keys(defaults)){
-    if(!Number.isFinite(Number(w.qpack.prices[meal]))||Number(w.qpack.prices[meal])<0){w.qpack.prices[meal]=defaults[meal];changed=true;}
+  if(!w.qpack.prices||typeof w.qpack.prices!=='object'){
+    w.qpack.prices={...defaults};
+    changed=true;
   }
-  if(!w.qpack.days||typeof w.qpack.days!=='object'){w.qpack.days=createQpackMealDays();for(const d of DAYS){const legacy=n(legacyDays[d]);if(legacy)w.qpack.days[d].breakfast=legacy;}changed=true;}
-  else{
+  for(const meal of ['breakfast','lunch','dinner']){
+    const value=Number(w.qpack.prices[meal]);
+    if(!Number.isFinite(value)||value<0){
+      w.qpack.prices[meal]=defaults[meal];
+      changed=true;
+    }
+  }
+
+  if(!w.qpack.days||typeof w.qpack.days!=='object'){
+    w.qpack.days=createQpackMealDays();
     for(const d of DAYS){
-      if(!w.qpack.days[d]||typeof w.qpack.days[d]!=='object'){w.qpack.days[d]={breakfast:0,lunch:0,dinner:0};changed=true;}
-      for(const meal of ['breakfast','lunch','dinner']){if(!Number.isFinite(Number(w.qpack.days[d][meal]))||Number(w.qpack.days[d][meal])<0){w.qpack.days[d][meal]=0;changed=true;}}
+      const legacy=n(legacyDays[d]);
+      if(legacy)w.qpack.days[d].breakfast=legacy;
+    }
+    changed=true;
+  }else{
+    let qpackHasQuantity=false;
+    for(const d of DAYS){
+      const day=w.qpack.days[d];
+      if(day&&typeof day==='object'){
+        if(n(day.breakfast)||n(day.lunch)||n(day.dinner))qpackHasQuantity=true;
+      }
+    }
+
+    /*
+      Migración segura de los antiguos "Menús empresa":
+      solo se convierten en desayunos cuando Q.PACK todavía no tiene
+      cantidades registradas en su estructura nueva. Nunca reemplaza
+      cantidades Q.PACK que el usuario ya haya introducido.
+    */
+    if(!qpackHasQuantity){
+      for(const d of DAYS){
+        const legacy=n(legacyDays[d]);
+        if(legacy){
+          if(!w.qpack.days[d]||typeof w.qpack.days[d]!=='object'){
+            w.qpack.days[d]={breakfast:0,lunch:0,dinner:0};
+          }
+          if(n(w.qpack.days[d].breakfast)===0){
+            w.qpack.days[d].breakfast=legacy;
+            changed=true;
+          }
+        }
+      }
+    }
+
+    for(const d of DAYS){
+      if(!w.qpack.days[d]||typeof w.qpack.days[d]!=='object'){
+        w.qpack.days[d]={breakfast:0,lunch:0,dinner:0};
+        changed=true;
+      }
+      for(const meal of ['breakfast','lunch','dinner']){
+        const value=Number(w.qpack.days[d][meal]);
+        if(!Number.isFinite(value)||value<0){
+          w.qpack.days[d][meal]=0;
+          changed=true;
+        }
+      }
     }
   }
 }
@@ -1814,6 +1876,7 @@ function ensureWeek(
 start=weekForDate(today())
 ){
 
+if(!Array.isArray(state.weeks))state.weeks=[];
 if(!start)start=weekForDate(today());
 
 let w=
@@ -1968,7 +2031,7 @@ function nav(){
 const items=[
 ['global','🌐 General'],
 ['dashboard','🏠 Inicio'],
-['week','📅 Semana'],
+['week','📅 Semanas'],
 ['income','💵 Ingresos'],
 ['expenses','💸 Gastos'],
 ['notes','📝 Notas'],
@@ -2717,7 +2780,8 @@ return `${formatDateShort(w.start)} al ${formatDateShort(end)}`;
 }
 
 function weeksSorted(){
-return [...state.weeks]
+const weeks=Array.isArray(state.weeks)?state.weeks:[];
+return [...weeks]
 .filter(w=>w&&w.start)
 .sort((a,b)=>String(b.start).localeCompare(String(a.start)));
 }
@@ -2822,16 +2886,109 @@ for(const d of DAYS){const day=w.qpack.days[d]||{};const b=n(day.breakfast),l=n(
 out.totalQty=out.breakfastQty+out.lunchQty+out.dinnerQty;out.totalMoney=out.breakfastMoney+out.lunchMoney+out.dinnerMoney;return out;}
 
 function qpackWeekView(w){
-ensureQpackWeek(w);const q=qpackMealTotals(w),p=w.qpack.prices;
-return `<div class="card qpack-week-card"><div class="notice" style="margin-bottom:12px"><b>📆 Periodo:</b> ${esc(weekRangeLabel(w))}</div>
-<div class="qpack-price-grid"><div class="field"><label>Nombre semana</label><input value="${esc(w.label)}" onchange="wedit('label',this.value)"></div>
-<div class="field"><label>Precio menú desayuno</label><input type="number" min="0" step=".01" value="${n(p.breakfast)}" onchange="qpackPriceEdit('breakfast',this.value)"></div>
-<div class="field"><label>Precio menú almuerzo</label><input type="number" min="0" step=".01" value="${n(p.lunch)}" onchange="qpackPriceEdit('lunch',this.value)"></div>
-<div class="field"><label>Precio menú cena</label><input type="number" min="0" step=".01" value="${n(p.dinner)}" onchange="qpackPriceEdit('dinner',this.value)"></div></div>
-<div class="tablewrap"><table class="qpack-table"><thead><tr><th>Día</th><th>Desayunos</th><th>Almuerzos</th><th>Cenas</th><th>Total del día</th></tr></thead><tbody>${DAYS.map(d=>{const day=w.qpack.days[d]||{},b=n(day.breakfast),l=n(day.lunch),c=n(day.dinner),total=b*n(p.breakfast)+l*n(p.lunch)+c*n(p.dinner);return `<tr><td><b>${d}</b></td><td><input type="number" min="0" step="1" value="${b}" onchange="qpackDayEdit('${d}','breakfast',this.value)"></td><td><input type="number" min="0" step="1" value="${l}" onchange="qpackDayEdit('${d}','lunch',this.value)"></td><td><input type="number" min="0" step="1" value="${c}" onchange="qpackDayEdit('${d}','dinner',this.value)"></td><td><b>${money(total)}</b></td></tr>`;}).join('')}</tbody></table></div>
-<div class="qpack-summary"><div class="qpack-summary-item"><span>☀️ Total desayunos</span><b>${q.breakfastQty} pedidos</b><strong>${money(q.breakfastMoney)}</strong></div><div class="qpack-summary-item"><span>🍴 Total almuerzos</span><b>${q.lunchQty} pedidos</b><strong>${money(q.lunchMoney)}</strong></div><div class="qpack-summary-item"><span>🌙 Total cenas</span><b>${q.dinnerQty} pedidos</b><strong>${money(q.dinnerMoney)}</strong></div><div class="qpack-summary-item total"><span>🧾 Total general</span><b>${q.totalQty} pedidos</b><strong>${money(q.totalMoney)}</strong></div></div></div>`;
-}
+ensureQpackWeek(w);
+const q=qpackMealTotals(w);
+const p=w.qpack.prices;
 
+return `
+<div class="card qpack-week-card">
+  <div class="notice qpack-period">
+    <b>📆 Periodo:</b> ${esc(weekRangeLabel(w))}
+  </div>
+
+  <div class="qpack-price-grid">
+    <div class="field">
+      <label>Nombre semana</label>
+      <input value="${esc(w.label)}" onchange="wedit('label',this.value)">
+    </div>
+
+    <div class="field">
+      <label>Precio menú desayuno</label>
+      <div class="qpack-price-input">
+        <span>S/</span>
+        <input type="number" min="0" step=".01" value="${n(p.breakfast)}" onchange="qpackPriceEdit('breakfast',this.value)">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Precio menú almuerzo</label>
+      <div class="qpack-price-input">
+        <span>S/</span>
+        <input type="number" min="0" step=".01" value="${n(p.lunch)}" onchange="qpackPriceEdit('lunch',this.value)">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Precio menú cena</label>
+      <div class="qpack-price-input">
+        <span>S/</span>
+        <input type="number" min="0" step=".01" value="${n(p.dinner)}" onchange="qpackPriceEdit('dinner',this.value)">
+      </div>
+    </div>
+  </div>
+
+  <div class="tablewrap">
+    <table class="qpack-table">
+      <thead>
+        <tr>
+          <th rowspan="2">Día</th>
+          <th colspan="2">☀️ DESAYUNO</th>
+          <th colspan="2">🍴 ALMUERZO</th>
+          <th colspan="2">🌙 CENA</th>
+          <th rowspan="2">TOTAL DEL DÍA</th>
+        </tr>
+        <tr>
+          <th>Cantidad</th><th>Monto (S/)</th>
+          <th>Cantidad</th><th>Monto (S/)</th>
+          <th>Cantidad</th><th>Monto (S/)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${DAYS.map(d=>{
+          const day=w.qpack.days[d]||{};
+          const b=n(day.breakfast), l=n(day.lunch), c=n(day.dinner);
+          const bm=b*n(p.breakfast), lm=l*n(p.lunch), cm=c*n(p.dinner);
+          const total=bm+lm+cm;
+          return `
+          <tr>
+            <td><b>${d}</b></td>
+            <td><input class="qpack-qty" type="number" min="0" step="1" value="${b}" onchange="qpackDayEdit('${d}','breakfast',this.value)"></td>
+            <td>${money(bm)}</td>
+            <td><input class="qpack-qty" type="number" min="0" step="1" value="${l}" onchange="qpackDayEdit('${d}','lunch',this.value)"></td>
+            <td>${money(lm)}</td>
+            <td><input class="qpack-qty" type="number" min="0" step="1" value="${c}" onchange="qpackDayEdit('${d}','dinner',this.value)"></td>
+            <td>${money(cm)}</td>
+            <td><b>${money(total)}</b></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="qpack-summary">
+    <div class="qpack-summary-item">
+      <span>☀️ Total desayunos</span>
+      <b>${q.breakfastQty} pedidos</b>
+      <strong>${money(q.breakfastMoney)}</strong>
+    </div>
+    <div class="qpack-summary-item">
+      <span>🍴 Total almuerzos</span>
+      <b>${q.lunchQty} pedidos</b>
+      <strong>${money(q.lunchMoney)}</strong>
+    </div>
+    <div class="qpack-summary-item">
+      <span>🌙 Total cenas</span>
+      <b>${q.dinnerQty} pedidos</b>
+      <strong>${money(q.dinnerMoney)}</strong>
+    </div>
+    <div class="qpack-summary-item total">
+      <span>🧾 Total general</span>
+      <b>${q.totalQty} pedidos</b>
+      <strong>${money(q.totalMoney)}</strong>
+    </div>
+  </div>
+</div>`;
+}
 function standardWeekView(w){
 return `<div class="card"><div class="notice" style="margin-bottom:12px"><b>📆 Periodo:</b> ${esc(weekRangeLabel(w))}</div><div class="form"><div class="field"><label>Nombre semana</label><input value="${esc(w.label)}" onchange="wedit('label',this.value)"></div><div class="field"><label>Precio menú empresa</label><input type="number" step=".01" value="${w.price}" onchange="wedit('price',this.value)"></div></div><div class="tablewrap"><table><thead><tr><th>Día</th><th>Menús empresa</th><th>Total</th></tr></thead><tbody>${DAYS.map(d=>`<tr><td>${d}</td><td><input type="number" min="0" value="${n(w.days?.[d])}" onchange="dayedit('${d}',this.value)"></td><td>${money(n(w.days?.[d])*n(w.price))}</td></tr>`).join('')}</tbody></table></div><div class="section"><h2>Total empresa: <span class="green">${money(weekTotal(w))}</span></h2><span class="pill">${DAYS.reduce((s,d)=>s+n(w.days?.[d]),0)} menús</span></div><div class="notice">Este total sirve como referencia para revisar cuánto corresponde cobrar a la empresa. El dinero recibido se registra aparte en <b>Ingresos</b>.</div></div>`;
 }
