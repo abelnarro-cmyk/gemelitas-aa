@@ -593,6 +593,31 @@ max-width:none
   background:#fff;
   box-shadow:0 12px 25px rgba(0,0,0,.18);
 }
+
+/* ===== Q.PACK · control semanal de desayunos, almuerzos y cenas ===== */
+.qpack-card{overflow:hidden}
+.qpack-prices{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0 14px}
+.qpack-price{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg)}
+.qpack-price .qpack-price-label{display:flex;align-items:center;gap:6px;font-size:.72rem;font-weight:900;color:var(--muted);margin-bottom:6px}
+.qpack-price input{padding:8px 10px}
+.qpack-table{min-width:900px}
+.qpack-table th,.qpack-table td{text-align:center;vertical-align:middle}
+.qpack-table th:first-child,.qpack-table td:first-child{text-align:left}
+.qpack-table thead th{background:color-mix(in srgb,var(--accent) 7%,var(--bg));}
+.qpack-meal-head{font-weight:900}
+.qpack-meal-sub{display:block;font-size:.62rem;font-weight:700;color:var(--muted);margin-top:3px;text-transform:none}
+.qpack-qty{max-width:92px;margin:auto;text-align:center;padding:7px 8px}
+.qpack-money{font-variant-numeric:tabular-nums;white-space:nowrap}
+.qpack-day-total{font-weight:900;white-space:nowrap}
+.qpack-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.qpack-summary-item{border:1px solid var(--line);border-radius:13px;padding:12px;background:var(--bg);display:flex;flex-direction:column;gap:4px}
+.qpack-summary-item span{font-size:.72rem;color:var(--muted);font-weight:800}
+.qpack-summary-item b{font-size:.88rem}
+.qpack-summary-item strong{font-size:1.02rem}
+.qpack-summary-item.total{background:color-mix(in srgb,var(--accent) 9%,var(--bg));border-color:color-mix(in srgb,var(--accent) 25%,var(--line))}
+@media(max-width:820px){.qpack-prices{grid-template-columns:1fr}.qpack-summary{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.qpack-summary{grid-template-columns:1fr}}
+
 @media(max-width:760px){
   .loginBox{
     grid-template-columns:1fr;
@@ -834,43 +859,10 @@ table th{
   gap:12px;
 }
 
-/* ===== Q.PACK — personalización exclusiva ===== */
-.qpack-week-card{overflow:hidden}
-.qpack-period{margin-bottom:12px}
-.qpack-price-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px}
-.qpack-price-input{display:flex;align-items:center;gap:6px}
-.qpack-price-input>span{font-weight:900;color:var(--muted)}
-.qpack-price-input input{flex:1;min-width:0}
-.qpack-table{min-width:1120px}
-.qpack-table th,.qpack-table td{vertical-align:middle;text-align:center}
-.qpack-table thead th{font-size:.66rem}
-.qpack-table thead th:first-child,.qpack-table tbody td:first-child{text-align:left}
-.qpack-table thead tr:first-child th{background:color-mix(in srgb,var(--accent2) 8%,var(--card))}
-.qpack-table thead tr:nth-child(2) th{font-size:.61rem}
-.qpack-table input.qpack-qty{width:88px;min-width:88px;text-align:center;padding:7px}
-.qpack-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;padding:10px;border-radius:15px;background:color-mix(in srgb,var(--bg) 75%,transparent);border:1px solid var(--line)}
-.qpack-summary-item{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-right:1px solid var(--line)}
-.qpack-summary-item:last-child{border-right:0}
-.qpack-summary-item span{color:var(--muted);font-size:.72rem;font-weight:900}
-.qpack-summary-item b{font-size:.82rem}
-.qpack-summary-item strong{font-size:1.12rem}
-.qpack-summary-item.total{background:color-mix(in srgb,var(--accent) 9%,transparent);border-radius:12px}
-@media(max-width:900px){.qpack-price-grid{grid-template-columns:1fr 1fr}.qpack-summary{grid-template-columns:1fr 1fr}.qpack-summary-item:nth-child(2){border-right:0}}
-@media(max-width:620px){.qpack-price-grid{grid-template-columns:1fr}.qpack-summary{grid-template-columns:1fr}.qpack-summary-item{border-right:0;border-bottom:1px solid var(--line)}.qpack-summary-item:last-child{border-bottom:0}}
-
-/* Arranque: evita mostrar el login mientras se restaura una sesión existente. */
-.startupScreen{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 20% 10%,rgba(79,140,255,.14),transparent 34%),radial-gradient(circle at 85% 90%,rgba(57,217,138,.10),transparent 30%),var(--bg)}
-.startupBox{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:230px;padding:28px 30px;border:1px solid var(--line);border-radius:20px;background:color-mix(in srgb,var(--card) 94%,transparent);box-shadow:0 18px 50px rgba(20,35,55,.12);text-align:center}
-.startupBox strong{font-size:1rem}.startupBox span{font-size:.78rem;color:var(--muted)}
-.startupSpinner{width:30px;height:30px;border-radius:50%;border:3px solid color-mix(in srgb,var(--accent2) 18%,transparent);border-top-color:var(--accent2);animation:startupSpin .75s linear infinite}
-@keyframes startupSpin{to{transform:rotate(360deg)}}
-
 </style>
 </head>
 
 <body data-theme="dark">
-
-<div id="startupScreen" class="startupScreen" aria-live="polite"><div class="startupBox"><div class="startupSpinner"></div><strong>GEMELITAS A&amp;A S.A.C.</strong><span>Comprobando sesión…</span></div></div>
 
 <div id="loginScreen" class="login">
 <div class="loginBox">
@@ -1239,25 +1231,9 @@ const DEVICE_ID_KEY='gemelitas_device_id_v2';
 const SOUND_KEY='gemelitas_button_sound_v1';
 const CACHE_DB_NAME='gemelitas_local_cache_v2';
 const ACTIVE_COMPANY_KEY='gemelitas_active_company_v2';
-const ACTIVE_VIEW_KEY='gemelitas_active_view_v1';
-const VALID_VIEWS=new Set(['global','dashboard','week','income','expenses','notes','reports','settings']);
 
 function activeCompanyStorageKey(){
 return ACTIVE_COMPANY_KEY+'_'+String(currentUser?.id||'guest');
-}
-
-function activeViewStorageKey(companyId=currentCompanyId){
-return ACTIVE_VIEW_KEY+'_'+String(currentUser?.id||'guest')+'_'+String(companyId||'');
-}
-
-function saveActiveView(view,companyId=currentCompanyId){
-if(!VALID_VIEWS.has(view)||!companyId)return;
-try{localStorage.setItem(activeViewStorageKey(companyId),view);}catch(e){}
-}
-
-function getSavedActiveView(companyId=currentCompanyId){
-if(!companyId)return null;
-try{const view=localStorage.getItem(activeViewStorageKey(companyId));return VALID_VIEWS.has(view)?view:null;}catch(e){return null;}
 }
 
 const CACHE_STORE='company_cache';
@@ -1778,105 +1754,177 @@ x.setDate(x.getDate()+diff);
 return x.toISOString().slice(0,10);
 }
 
-function isQpackCompany(companyData=null){
-const selected=companies.find(c=>String(c.id)===String(currentCompanyId));
-const name=String(companyData?.settings?.name||state?.settings?.name||selected?.name||'').trim().toUpperCase();
-return name==='Q.PACK'||name==='QPACK';
+function isQpackName(name){
+const value=String(name||'').trim().toUpperCase().replace(/\s+/g,' ');
+return value==='Q.PACK'||value==='QPACK';
 }
 
-function createQpackMealDays(sourceDays=null){
-return Object.fromEntries(DAYS.map(d=>[d,{breakfast:n(sourceDays?.[d]?.breakfast),lunch:n(sourceDays?.[d]?.lunch),dinner:n(sourceDays?.[d]?.dinner)}]));
+function isQpackCompany(companyData=null){
+const selected=companies.find(c=>String(c.id)===String(currentCompanyId));
+const name=companyData?.settings?.name||state?.settings?.name||selected?.name||'';
+return isQpackName(name);
+}
+
+function qpackDefault(){
+return {
+prices:{breakfast:6,lunch:7,dinner:7},
+_daysVersion:1,
+ days:Object.fromEntries(DAYS.map(d=>[d,{breakfast:0,lunch:0,dinner:0}]))
+};
 }
 
 function normalizeQpackWeek(w){
-if(!w||!isQpackCompany())return false;
-let changed=false;
-const legacyDays=(w.days&&typeof w.days==='object')?w.days:{};
-const defaults={breakfast:6,lunch:7,dinner:7};
-
+if(!w)return w;
+const oldDays=w.days&&typeof w.days==='object'?w.days:{};
 if(!w.qpack||typeof w.qpack!=='object'){
-  w.qpack={prices:{...defaults},days:createQpackMealDays()};
-  for(const d of DAYS){
-    const legacy=n(legacyDays[d]);
-    if(legacy)w.qpack.days[d].breakfast=legacy;
-  }
-  changed=true;
-}else{
-  if(!w.qpack.prices||typeof w.qpack.prices!=='object'){
-    w.qpack.prices={...defaults};
-    changed=true;
-  }
-  for(const meal of ['breakfast','lunch','dinner']){
-    const value=Number(w.qpack.prices[meal]);
-    if(!Number.isFinite(value)||value<0){
-      w.qpack.prices[meal]=defaults[meal];
-      changed=true;
-    }
-  }
-
-  if(!w.qpack.days||typeof w.qpack.days!=='object'){
-    w.qpack.days=createQpackMealDays();
-    for(const d of DAYS){
-      const legacy=n(legacyDays[d]);
-      if(legacy)w.qpack.days[d].breakfast=legacy;
-    }
-    changed=true;
-  }else{
-    let qpackHasQuantity=false;
-    for(const d of DAYS){
-      const day=w.qpack.days[d];
-      if(day&&typeof day==='object'){
-        if(n(day.breakfast)||n(day.lunch)||n(day.dinner))qpackHasQuantity=true;
-      }
-    }
-
-    /*
-      Migración segura de los antiguos "Menús empresa":
-      solo se convierten en desayunos cuando Q.PACK todavía no tiene
-      cantidades registradas en su estructura nueva. Nunca reemplaza
-      cantidades Q.PACK que el usuario ya haya introducido.
-    */
-    if(!qpackHasQuantity){
-      for(const d of DAYS){
-        const legacy=n(legacyDays[d]);
-        if(legacy){
-          if(!w.qpack.days[d]||typeof w.qpack.days[d]!=='object'){
-            w.qpack.days[d]={breakfast:0,lunch:0,dinner:0};
-          }
-          if(n(w.qpack.days[d].breakfast)===0){
-            w.qpack.days[d].breakfast=legacy;
-            changed=true;
-          }
-        }
-      }
-    }
-
-    for(const d of DAYS){
-      if(!w.qpack.days[d]||typeof w.qpack.days[d]!=='object'){
-        w.qpack.days[d]={breakfast:0,lunch:0,dinner:0};
-        changed=true;
-      }
-      for(const meal of ['breakfast','lunch','dinner']){
-        const value=Number(w.qpack.days[d][meal]);
-        if(!Number.isFinite(value)||value<0){
-          w.qpack.days[d][meal]=0;
-          changed=true;
-        }
-      }
-    }
-  }
+const q=qpackDefault();
+DAYS.forEach(d=>{
+q.days[d].breakfast=Math.max(0,n(oldDays[d]));
+});
+w.qpack=q;
+return w;
 }
+const q=w.qpack;
+q.prices={
+...qpackDefault().prices,
+...(q.prices&&typeof q.prices==='object'?q.prices:{})
+};
+const breakfastPrice=Number(q.prices.breakfast);
+const lunchPrice=Number(q.prices.lunch);
+const dinnerPrice=Number(q.prices.dinner);
+q.prices.breakfast=Number.isFinite(breakfastPrice)?Math.max(0,breakfastPrice):6;
+q.prices.lunch=Number.isFinite(lunchPrice)?Math.max(0,lunchPrice):7;
+q.prices.dinner=Number.isFinite(dinnerPrice)?Math.max(0,dinnerPrice):7;
+if(!q.days||typeof q.days!=='object')q.days={};
+DAYS.forEach(d=>{
+const day=q.days[d];
+q.days[d]={
+...{breakfast:0,lunch:0,dinner:0},
+...(day&&typeof day==='object'?day:{})
+};
+q.days[d].breakfast=Math.max(0,n(q.days[d].breakfast));
+q.days[d].lunch=Math.max(0,n(q.days[d].lunch));
+q.days[d].dinner=Math.max(0,n(q.days[d].dinner));
+});
+return w;
+}
+
+function normalizeQpackWeeks(){
+if(!isQpackCompany())return false;
+let changed=false;
+if(!Array.isArray(state.weeks))state.weeks=[];
+state.weeks.forEach(w=>{
+const had=!!w?.qpack;
+normalizeQpackWeek(w);
+if(!had)changed=true;
+});
 return changed;
 }
 
-function normalizeQpackWeeks(){if(!isQpackCompany()||!Array.isArray(state.weeks))return false;let changed=false;for(const w of state.weeks)if(normalizeQpackWeek(w))changed=true;return changed;}
-function ensureQpackWeek(w){if(isQpackCompany())normalizeQpackWeek(w);return w;}
+function qpackWeekTotal(w){
+normalizeQpackWeek(w);
+return DAYS.reduce((sum,d)=>{
+const day=w.qpack.days[d];
+return sum+n(day.breakfast)*n(w.qpack.prices.breakfast)+n(day.lunch)*n(w.qpack.prices.lunch)+n(day.dinner)*n(w.qpack.prices.dinner);
+},0);
+}
+
+function qpackTotals(w){
+normalizeQpackWeek(w);
+const out={breakfastQty:0,breakfastMoney:0,lunchQty:0,lunchMoney:0,dinnerQty:0,dinnerMoney:0};
+DAYS.forEach(d=>{
+const day=w.qpack.days[d];
+out.breakfastQty+=n(day.breakfast);
+out.breakfastMoney+=n(day.breakfast)*n(w.qpack.prices.breakfast);
+out.lunchQty+=n(day.lunch);
+out.lunchMoney+=n(day.lunch)*n(w.qpack.prices.lunch);
+out.dinnerQty+=n(day.dinner);
+out.dinnerMoney+=n(day.dinner)*n(w.qpack.prices.dinner);
+});
+out.totalQty=out.breakfastQty+out.lunchQty+out.dinnerQty;
+out.totalMoney=out.breakfastMoney+out.lunchMoney+out.dinnerMoney;
+return out;
+}
+
+function qpackPriceEdit(meal,value){
+const w=selectedWeek();
+normalizeQpackWeek(w);
+w.qpack.prices[meal]=Math.max(0,n(value));
+queueSync();
+render();
+}
+
+function qpackDayEdit(day,meal,value){
+const w=selectedWeek();
+normalizeQpackWeek(w);
+w.qpack.days[day][meal]=Math.max(0,n(value));
+queueSync();
+render();
+}
+
+function qpackWeekView(w){
+normalizeQpackWeek(w);
+const q=w.qpack;
+const totals=qpackTotals(w);
+return `
+<div class="card qpack-card">
+<div class="notice" style="margin-bottom:12px"><b>📆 Periodo:</b> ${esc(weekRangeLabel(w))}</div>
+
+<div class="qpack-prices">
+<div class="qpack-price">
+<div class="qpack-price-label">☀️ Precio desayuno</div>
+<input type="number" min="0" step=".01" value="${n(q.prices.breakfast).toFixed(2)}" onchange="qpackPriceEdit('breakfast',this.value)">
+</div>
+<div class="qpack-price">
+<div class="qpack-price-label">🍴 Precio almuerzo</div>
+<input type="number" min="0" step=".01" value="${n(q.prices.lunch).toFixed(2)}" onchange="qpackPriceEdit('lunch',this.value)">
+</div>
+<div class="qpack-price">
+<div class="qpack-price-label">🌙 Precio cena</div>
+<input type="number" min="0" step=".01" value="${n(q.prices.dinner).toFixed(2)}" onchange="qpackPriceEdit('dinner',this.value)">
+</div>
+</div>
+
+<div class="tablewrap">
+<table class="qpack-table">
+<thead><tr>
+<th>Día</th>
+<th><span class="qpack-meal-head">☀️ DESAYUNO</span><span class="qpack-meal-sub">Cantidad · Monto (S/)</span></th>
+<th><span class="qpack-meal-head">🍴 ALMUERZO</span><span class="qpack-meal-sub">Cantidad · Monto (S/)</span></th>
+<th><span class="qpack-meal-head">🌙 CENA</span><span class="qpack-meal-sub">Cantidad · Monto (S/)</span></th>
+<th>TOTAL DEL DÍA</th>
+</tr></thead>
+<tbody>
+${DAYS.map(d=>{
+const day=q.days[d];
+const bm=n(day.breakfast)*n(q.prices.breakfast);
+const lm=n(day.lunch)*n(q.prices.lunch);
+const dm=n(day.dinner)*n(q.prices.dinner);
+return `<tr>
+<td><b>${d}</b></td>
+<td><input class="qpack-qty" type="number" min="0" step="1" value="${n(day.breakfast)}" onchange="qpackDayEdit('${d}','breakfast',this.value)"><div class="qpack-money">${money(bm)}</div></td>
+<td><input class="qpack-qty" type="number" min="0" step="1" value="${n(day.lunch)}" onchange="qpackDayEdit('${d}','lunch',this.value)"><div class="qpack-money">${money(lm)}</div></td>
+<td><input class="qpack-qty" type="number" min="0" step="1" value="${n(day.dinner)}" onchange="qpackDayEdit('${d}','dinner',this.value)"><div class="qpack-money">${money(dm)}</div></td>
+<td class="qpack-day-total">${money(bm+lm+dm)}</td>
+</tr>`;
+}).join('')}
+</tbody>
+</table>
+</div>
+
+<div class="qpack-summary">
+<div class="qpack-summary-item"><span>☀️ Total desayunos</span><b>${totals.breakfastQty} pedidos</b><strong>${money(totals.breakfastMoney)}</strong></div>
+<div class="qpack-summary-item"><span>🍴 Total almuerzos</span><b>${totals.lunchQty} pedidos</b><strong>${money(totals.lunchMoney)}</strong></div>
+<div class="qpack-summary-item"><span>🌙 Total cenas</span><b>${totals.dinnerQty} pedidos</b><strong>${money(totals.dinnerMoney)}</strong></div>
+<div class="qpack-summary-item total"><span>🧾 Total general</span><b>${totals.totalQty} pedidos</b><strong>${money(totals.totalMoney)}</strong></div>
+</div>
+</div>`;
+}
 
 function ensureWeek(
 start=weekForDate(today())
 ){
 
-if(!Array.isArray(state.weeks))state.weeks=[];
 if(!start)start=weekForDate(today());
 
 let w=
@@ -1896,7 +1944,7 @@ DAYS.map(d=>[d,0])
 )
 };
 
-if(isQpackCompany()){w.qpack={prices:{breakfast:6,lunch:7,dinner:7},days:createQpackMealDays()};}
+if(isQpackCompany())normalizeQpackWeek(w);
 
 state.weeks.push(w);
 
@@ -1904,7 +1952,7 @@ saveLocal();
 
 }
 
-return ensureQpackWeek(w);
+return w;
 
 }
 
@@ -1922,8 +1970,17 @@ return w;
 }
 
 function weekTotal(w){
-if(isQpackCompany()){ensureQpackWeek(w);const p=w.qpack.prices;return DAYS.reduce((s,d)=>{const day=w.qpack.days[d]||{};return s+n(day.breakfast)*n(p.breakfast)+n(day.lunch)*n(p.lunch)+n(day.dinner)*n(p.dinner);},0);}
-return DAYS.reduce((s,d)=>s+n(w.days?.[d])*n(w.price),0);
+
+if(isQpackCompany())return qpackWeekTotal(w);
+
+return DAYS.reduce(
+(s,d)=>
+s+
+n(w.days?.[d])*
+n(w.price),
+0
+);
+
 }
 
 function extrasForWeek(w){
@@ -2031,7 +2088,7 @@ function nav(){
 const items=[
 ['global','🌐 General'],
 ['dashboard','🏠 Inicio'],
-['week','📅 Semanas'],
+['week','📅 Semana'],
 ['income','💵 Ingresos'],
 ['expenses','💸 Gastos'],
 ['notes','📝 Notas'],
@@ -2053,10 +2110,15 @@ ${l}
 }
 
 function navigateTo(view){
-if(!VALID_VIEWS.has(view))return;
-if(view==='global'){state.view='global';saveActiveView('global');render();return;}
-if(!currentCompanyId)return;
-state.view=view;saveActiveView(view);render();
+if(view==='global'){
+state.view='global';
+render();
+return;
+}
+if(!currentCompanyId)
+return;
+state.view=view;
+render();
 }
 
 async function refreshGlobalMetrics(options={}){
@@ -2129,8 +2191,11 @@ const sales=Array.isArray(d.sales)?d.sales:[];
 const income=Array.isArray(d.income)?d.income:[];
 const expenses=Array.isArray(d.expenses)?d.expenses:[];
 
+const qpackCompany=isQpackName(d?.settings?.name);
 const salesTotalLocal=w=>
-DAYS.reduce((sum,day)=>sum+n(w?.days?.[day])*n(w?.price),0)+
+(qpackCompany
+?qpackWeekTotal(w)
+:DAYS.reduce((sum,day)=>sum+n(w?.days?.[day])*n(w?.price),0)) +
 sales.filter(x=>weekForDate(x?.date)===w?.start)
 .reduce((sum,x)=>sum+n(x?.qty)*n(x?.price),0);
 
@@ -2225,8 +2290,11 @@ const sales=Array.isArray(fallback.sales)?fallback.sales:[];
 const income=Array.isArray(fallback.income)?fallback.income:[];
 const expenses=Array.isArray(fallback.expenses)?fallback.expenses:[];
 
+const qpackCompany=isQpackName(fallback?.settings?.name);
 const salesTotalLocal=w=>
-DAYS.reduce((sum,day)=>sum+n(w?.days?.[day])*n(w?.price),0)+
+(qpackCompany
+?qpackWeekTotal(w)
+:DAYS.reduce((sum,day)=>sum+n(w?.days?.[day])*n(w?.price),0)) +
 sales.filter(x=>weekForDate(x?.date)===w?.start)
 .reduce((sum,x)=>sum+n(x?.qty)*n(x?.price),0);
 
@@ -2780,8 +2848,7 @@ return `${formatDateShort(w.start)} al ${formatDateShort(end)}`;
 }
 
 function weeksSorted(){
-const weeks=Array.isArray(state.weeks)?state.weeks:[];
-return [...weeks]
+return [...state.weeks]
 .filter(w=>w&&w.start)
 .sort((a,b)=>String(b.start).localeCompare(String(a.start)));
 }
@@ -2880,122 +2947,117 @@ return state.expenses
 .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
 }
 
-function qpackMealTotals(w){
-ensureQpackWeek(w);const p=w.qpack.prices;const out={breakfastQty:0,lunchQty:0,dinnerQty:0,breakfastMoney:0,lunchMoney:0,dinnerMoney:0};
-for(const d of DAYS){const day=w.qpack.days[d]||{};const b=n(day.breakfast),l=n(day.lunch),c=n(day.dinner);out.breakfastQty+=b;out.lunchQty+=l;out.dinnerQty+=c;out.breakfastMoney+=b*n(p.breakfast);out.lunchMoney+=l*n(p.lunch);out.dinnerMoney+=c*n(p.dinner);}
-out.totalQty=out.breakfastQty+out.lunchQty+out.dinnerQty;out.totalMoney=out.breakfastMoney+out.lunchMoney+out.dinnerMoney;return out;}
+function weekView(){
 
-function qpackWeekView(w){
-ensureQpackWeek(w);
-const q=qpackMealTotals(w);
-const p=w.qpack.prices;
+const w=selectedWeek();
+if(isQpackCompany())normalizeQpackWeek(w);
+const incomes=weekIncomeList(w);
+const expenses=weekExpenseList(w);
+const businessExpenses=expenses.filter(x=>x.type==='business');
+const personalExpenses=expenses.filter(x=>x.type==='personal');
 
 return `
-<div class="card qpack-week-card">
-  <div class="notice qpack-period">
-    <b>📆 Periodo:</b> ${esc(weekRangeLabel(w))}
-  </div>
 
-  <div class="qpack-price-grid">
-    <div class="field">
-      <label>Nombre semana</label>
-      <input value="${esc(w.label)}" onchange="wedit('label',this.value)">
-    </div>
+${searchWeekCard(w)}
 
-    <div class="field">
-      <label>Precio menú desayuno</label>
-      <div class="qpack-price-input">
-        <span>S/</span>
-        <input type="number" min="0" step=".01" value="${n(p.breakfast)}" onchange="qpackPriceEdit('breakfast',this.value)">
-      </div>
-    </div>
+<div class="section">
+<h2>📅 Control de ${esc(w.label)}</h2>
+<div class="row">
+<input style="width:160px" type="date" value="${w.start}" onchange="state.currentWeek=weekForDate(this.value);render();">
+<button class="btn secondary small" onclick="newWeek()">+ Nueva semana</button>
+</div>
+</div>
 
-    <div class="field">
-      <label>Precio menú almuerzo</label>
-      <div class="qpack-price-input">
-        <span>S/</span>
-        <input type="number" min="0" step=".01" value="${n(p.lunch)}" onchange="qpackPriceEdit('lunch',this.value)">
-      </div>
-    </div>
+${isQpackCompany()?qpackWeekView(w):`<div class="card">
+<div class="notice" style="margin-bottom:12px"><b>📆 Periodo:</b> ${esc(weekRangeLabel(w))}</div>
+<div class="form">
+<div class="field"><label>Nombre semana</label><input value="${esc(w.label)}" onchange="wedit('label',this.value)"></div>
+<div class="field"><label>Precio menú empresa</label><input type="number" step=".01" value="${w.price}" onchange="wedit('price',this.value)"></div>
+</div>
+<div class="tablewrap"><table><thead><tr><th>Día</th><th>Menús empresa</th><th>Total</th></tr></thead><tbody>${DAYS.map(d=>`<tr><td>${d}</td><td><input type="number" min="0" value="${n(w.days?.[d])}" onchange="dayedit('${d}',this.value)"></td><td>${money(n(w.days?.[d])*n(w.price))}</td></tr>`).join('')}</tbody></table></div>
+<div class="section"><h2>Total empresa: <span class="green">${money(weekTotal(w))}</span></h2><span class="pill">${DAYS.reduce((s,d)=>s+n(w.days?.[d]),0)} menús</span></div>
+<div class="notice">Este total sirve como referencia para revisar cuánto corresponde cobrar a la empresa. El dinero recibido se registra aparte en <b>Ingresos</b>.</div>
+</div>`}
 
-    <div class="field">
-      <label>Precio menú cena</label>
-      <div class="qpack-price-input">
-        <span>S/</span>
-        <input type="number" min="0" step=".01" value="${n(p.dinner)}" onchange="qpackPriceEdit('dinner',this.value)">
-      </div>
-    </div>
-  </div>
+<div class="card">
+<div class="section"><h2>➕ Ventas adicionales</h2><span>Total: <b>${money(extrasForWeek(w))}</b></span></div>
+<div class="form">
+<div class="field"><label>Fecha</label><input type="date" id="sdate" value="${today()}"></div>
+<div class="field"><label>Producto</label><input id="sprod" placeholder="Menú, gaseosa..."></div>
+<div class="field"><label>Cantidad</label><input id="sqty" type="number" value="1"></div>
+<div class="field"><label>Precio</label><input id="sprice" type="number" step=".01" placeholder="0.00"></div>
+<button class="btn" onclick="addSale()">Agregar</button>
+</div>
+${listSales(w)}
+</div>
 
-  <div class="tablewrap">
-    <table class="qpack-table">
-      <thead>
-        <tr>
-          <th rowspan="2">Día</th>
-          <th colspan="2">☀️ DESAYUNO</th>
-          <th colspan="2">🍴 ALMUERZO</th>
-          <th colspan="2">🌙 CENA</th>
-          <th rowspan="2">TOTAL DEL DÍA</th>
-        </tr>
-        <tr>
-          <th>Cantidad</th><th>Monto (S/)</th>
-          <th>Cantidad</th><th>Monto (S/)</th>
-          <th>Cantidad</th><th>Monto (S/)</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${DAYS.map(d=>{
-          const day=w.qpack.days[d]||{};
-          const b=n(day.breakfast), l=n(day.lunch), c=n(day.dinner);
-          const bm=b*n(p.breakfast), lm=l*n(p.lunch), cm=c*n(p.dinner);
-          const total=bm+lm+cm;
-          return `
-          <tr>
-            <td><b>${d}</b></td>
-            <td><input class="qpack-qty" type="number" min="0" step="1" value="${b}" onchange="qpackDayEdit('${d}','breakfast',this.value)"></td>
-            <td>${money(bm)}</td>
-            <td><input class="qpack-qty" type="number" min="0" step="1" value="${l}" onchange="qpackDayEdit('${d}','lunch',this.value)"></td>
-            <td>${money(lm)}</td>
-            <td><input class="qpack-qty" type="number" min="0" step="1" value="${c}" onchange="qpackDayEdit('${d}','dinner',this.value)"></td>
-            <td>${money(cm)}</td>
-            <td><b>${money(total)}</b></td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-  </div>
+<div class="grid two" style="margin-top:13px">
+<div class="card"><div class="section"><div><h2>💵 Ingresos de la semana</h2><p class="sub">${esc(w.label)} · ${esc(weekRangeLabel(w))}</p></div><span class="pill">${money(incomeForWeek(w))}</span></div>${incomes.length?incomes.map(x=>itemIncome(x)).join(''):'<div class="empty">No hay ingresos registrados para esta semana.</div>'}</div>
+<div class="card"><div class="section"><div><h2>💸 Gastos de la semana</h2><p class="sub">${esc(w.label)} · ${esc(weekRangeLabel(w))}</p></div><span class="pill">${money(businessExpenses.reduce((s,x)=>s+n(x.amount),0))}</span></div>${expenses.length?expenses.map(x=>expenseItem(x)).join(''):'<div class="empty">No hay gastos registrados para esta semana.</div>'}</div>
+</div>
 
-  <div class="qpack-summary">
-    <div class="qpack-summary-item">
-      <span>☀️ Total desayunos</span>
-      <b>${q.breakfastQty} pedidos</b>
-      <strong>${money(q.breakfastMoney)}</strong>
-    </div>
-    <div class="qpack-summary-item">
-      <span>🍴 Total almuerzos</span>
-      <b>${q.lunchQty} pedidos</b>
-      <strong>${money(q.lunchMoney)}</strong>
-    </div>
-    <div class="qpack-summary-item">
-      <span>🌙 Total cenas</span>
-      <b>${q.dinnerQty} pedidos</b>
-      <strong>${money(q.dinnerMoney)}</strong>
-    </div>
-    <div class="qpack-summary-item total">
-      <span>🧾 Total general</span>
-      <b>${q.totalQty} pedidos</b>
-      <strong>${money(q.totalMoney)}</strong>
-    </div>
-  </div>
-</div>`;
-}
-function standardWeekView(w){
-return `<div class="card"><div class="notice" style="margin-bottom:12px"><b>📆 Periodo:</b> ${esc(weekRangeLabel(w))}</div><div class="form"><div class="field"><label>Nombre semana</label><input value="${esc(w.label)}" onchange="wedit('label',this.value)"></div><div class="field"><label>Precio menú empresa</label><input type="number" step=".01" value="${w.price}" onchange="wedit('price',this.value)"></div></div><div class="tablewrap"><table><thead><tr><th>Día</th><th>Menús empresa</th><th>Total</th></tr></thead><tbody>${DAYS.map(d=>`<tr><td>${d}</td><td><input type="number" min="0" value="${n(w.days?.[d])}" onchange="dayedit('${d}',this.value)"></td><td>${money(n(w.days?.[d])*n(w.price))}</td></tr>`).join('')}</tbody></table></div><div class="section"><h2>Total empresa: <span class="green">${money(weekTotal(w))}</span></h2><span class="pill">${DAYS.reduce((s,d)=>s+n(w.days?.[d]),0)} menús</span></div><div class="notice">Este total sirve como referencia para revisar cuánto corresponde cobrar a la empresa. El dinero recibido se registra aparte en <b>Ingresos</b>.</div></div>`;
+<div class="card" style="margin-top:13px"><div class="notice">📌 <b>Resumen de ${esc(w.label)}:</b> Ingresos ${money(incomeForWeek(w))} · Gastos negocio ${money(businessExpenses.reduce((s,x)=>s+n(x.amount),0))} · Gastos personales ${money(personalExpenses.reduce((s,x)=>s+n(x.amount),0))}</div></div>
+
+`;
 }
 
-function weekView(){
-const w=selectedWeek();const incomes=weekIncomeList(w),expenses=weekExpenseList(w),businessExpenses=expenses.filter(x=>x.type==='business');
-return `${searchWeekCard(w)}<div class="section"><h2>📅 Control de ${esc(w.label)}</h2><div class="row"><input style="width:160px" type="date" value="${w.start}" onchange="state.currentWeek=weekForDate(this.value);render();"><button class="btn secondary small" onclick="newWeek()">+ Nueva semana</button></div></div>${isQpackCompany()?qpackWeekView(w):standardWeekView(w)}<div class="card" style="margin-top:13px"><div class="section"><h2>➕ Ventas adicionales</h2><span>Total: <b>${money(extrasForWeek(w))}</b></span></div><div class="form"><div class="field"><label>Fecha</label><input type="date" id="sdate" value="${today()}"></div><div class="field"><label>Producto</label><input id="sprod" placeholder="Menú, gaseosa..."></div><div class="field"><label>Cantidad</label><input id="sqty" type="number" value="1"></div><div class="field"><label>Precio</label><input id="sprice" type="number" step=".01" placeholder="0.00"></div><button class="btn" onclick="addSale()">Agregar</button></div>${listSales(w)}</div><div class="grid two" style="margin-top:13px"><div class="card"><h3>💰 Ingresos de la semana</h3><p class="sub">${incomes.length?money(incomeForWeek(w)):'Sin ingresos registrados.'}</p></div><div class="card"><h3>💸 Gastos de la semana</h3><p class="sub">${expenses.length?money(businessExpenses.reduce((s,x)=>s+n(x.amount),0)):'Sin gastos registrados.'}</p></div></div>`;
+function listSales(w){
+
+const a=
+state.sales.filter(
+x=>weekForDate(x.date)===w.start
+);
+
+if(!a.length)
+return '<div class="empty">Sin ventas adicionales.</div>';
+
+return a.map(
+x=>
+`
+<div class="item">
+
+<div>
+
+<b>
+${esc(x.product)}
+</b>
+
+<small>
+${x.date} ·
+${x.qty} ×
+${money(x.price)}
+</small>
+
+</div>
+
+<div>
+
+<b>
+${money(x.qty*x.price)}
+</b>
+
+<div class="actions">
+
+<button
+class="btn secondary small"
+onclick="editSale('${x.id}')">
+✏️
+</button>
+
+<button
+class="btn secondary small"
+onclick="deleteSale('${x.id}')">
+🗑
+</button>
+
+</div>
+
+</div>
+
+</div>
+`
+).join('');
+
 }
 
 function incomeView(){
@@ -3825,9 +3887,6 @@ setTimeout(()=>loadDeviceSessions(false),50);
 
 }
 
-function qpackPriceEdit(meal,v){const w=selectedWeek();ensureQpackWeek(w);const p=n(v);if(p<0){alert('El precio no puede ser negativo.');return;}w.qpack.prices[meal]=p;queueSync();render();}
-function qpackDayEdit(day,meal,v){const w=selectedWeek();ensureQpackWeek(w);const q=n(v);if(q<0){alert('La cantidad no puede ser negativa.');return;}w.qpack.days[day][meal]=q;queueSync();render();}
-
 function wedit(k,v){
 
 selectedWeek()[k]=
@@ -4616,25 +4675,25 @@ throw new Error('No se pudieron cargar tus empresas. '+(error.message||'Verifica
 return [...new Set((data||[]).map(x=>x.company_id).filter(Boolean))];
 }
 
-async function loadCompany(id,options={}){
+async function loadCompany(id){
 if(!id||!currentUser?.id)return false;
-currentCompanyId=String(id);loading=true;setStatus('Cargando empresa…');
-if(realtimeChannel){try{await sb.removeChannel(realtimeChannel);}catch(e){}realtimeChannel=null;}
-localRevision=0;localDirty=false;remotePendingSnapshot=null;baseServerState=null;
+currentCompanyId=String(id); loading=true; setStatus('Cargando empresa…');
+if(realtimeChannel){try{await sb.removeChannel(realtimeChannel);}catch(e){} realtimeChannel=null;}
+localRevision=0; localDirty=false; remotePendingSnapshot=null; baseServerState=null;
 let serverData=null;
 try{const {data,error}=await sb.from('company_app_data').select('company_id,data,updated_at').eq('company_id',id).maybeSingle();if(error)throw error;serverData=data||null;}catch(error){
- const cached=await readLocalCache(id);state=cached?{...structuredClone(DEFAULT),...cached,settings:{...DEFAULT.settings,...(cached.settings||{})}}:structuredClone(DEFAULT);
- state.view=options.restoreView?(getSavedActiveView(currentCompanyId)||'dashboard'):'dashboard';ensureWeek();baseServerState=structuredClone(state);loading=false;updateCompanySelect();render();setStatus('Sin conexión · usando datos locales',false);return false;
+ const cached=await readLocalCache(id); state=cached?{...structuredClone(DEFAULT),...cached,settings:{...DEFAULT.settings,...(cached.settings||{})}}:structuredClone(DEFAULT); state.view='dashboard'; ensureWeek(); baseServerState=structuredClone(state); loading=false; updateCompanySelect(); render(); setStatus('Sin conexión · usando datos locales',false); return false;
 }
 if(serverData?.data){const incoming=serverData.data;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(state);}else{state=structuredClone(DEFAULT);baseServerState=structuredClone(state);}
 const appearance=getGlobalAppearance();state.settings.theme=appearance.theme;state.settings.font=appearance.font;
-const migratedQpack=normalizeQpackWeeks();
-state.view=options.restoreView?(getSavedActiveView(currentCompanyId)||'dashboard'):'dashboard';
-ensureWeek();loading=false;
-if(!serverData?.data){localDirty=true;const saved=await persist();if(!saved){await writeIndexedCache(id,state);setStatus('Empresa nueva · pendiente de sincronizar',false);}}else{await writeIndexedCache(id,state);try{localStorage.removeItem('gemelitas_cache_'+id);}catch(e){}if(migratedQpack)await persist();else setStatus('Sincronizado');}
+const qpackMigrated=normalizeQpackWeeks();
+state.view='dashboard';ensureWeek();loading=false;
+if(!serverData?.data){localDirty=true;const saved=await persist();if(!saved){await writeIndexedCache(id,state);setStatus('Empresa nueva · pendiente de sincronizar',false);}}else{
+if(qpackMigrated){localDirty=true;await persist();}
+await writeIndexedCache(id,state);try{localStorage.removeItem('gemelitas_cache_'+id);}catch(e){}setStatus('Sincronizado');}
 updateCompanySelect();render();
-try{realtimeChannel=sb.channel('company_app_data_'+id).on('postgres_changes',{event:'*',schema:'public',table:'company_app_data',filter:'company_id=eq.'+id},payload=>{const incoming=payload?.new?.data;if(!incoming||String(payload?.new?.company_id)!==String(currentCompanyId))return;if(localDirty){remotePendingSnapshot=structuredClone(incoming);setStatus('Cambios de otro dispositivo pendientes',false);return;}const incomingTime=Date.parse(incoming.updatedAt||payload?.new?.updated_at||'');const localTime=Date.parse(state.updatedAt||'');if(Number.isFinite(incomingTime)&&Number.isFinite(localTime)&&incomingTime<=localTime)return;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(incoming);remotePendingSnapshot=null;normalizeQpackWeeks();saveLocal();render();setStatus('Sincronizado');}).subscribe(status=>{if(status==='SUBSCRIBED')setStatus('Sincronizado');});}catch(e){console.warn('No se pudo activar la sincronización en tiempo real.',e);}
-try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){}return true;
+try{realtimeChannel=sb.channel('company_app_data_'+id).on('postgres_changes',{event:'*',schema:'public',table:'company_app_data',filter:'company_id=eq.'+id},payload=>{const incoming=payload?.new?.data;if(!incoming||String(payload?.new?.company_id)!==String(currentCompanyId))return;if(localDirty){remotePendingSnapshot=structuredClone(incoming);setStatus('Cambios de otro dispositivo pendientes',false);return;}const incomingTime=Date.parse(incoming.updatedAt||payload?.new?.updated_at||'');const localTime=Date.parse(state.updatedAt||'');if(Number.isFinite(incomingTime)&&Number.isFinite(localTime)&&incomingTime<=localTime)return;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(incoming);remotePendingSnapshot=null;state.view='dashboard';saveLocal();render();setStatus('Sincronizado');}).subscribe(status=>{if(status==='SUBSCRIBED')setStatus('Sincronizado');});}catch(e){console.warn('No se pudo activar la sincronización en tiempo real.',e);}
+try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){} return true;
 }
 
 function snapshotForMerge(x){
@@ -4805,19 +4864,45 @@ if(companies.length<=1){alert('Debes conservar al menos una empresa.');return;}c
 try{if(localDirty)await syncNow();const {error}=await sb.rpc('delete_company_for_current_user',{p_company_id:deletedId});if(error)throw error;await removeAllLocalCacheForCompany(deletedId);if(realtimeChannel){try{await sb.removeChannel(realtimeChannel);}catch(e){}realtimeChannel=null;}companies=remaining;currentCompanyId=nextId;globalMetrics=[];globalMetricsUserId=null;globalMetricsErrors=[];try{localStorage.setItem(activeCompanyStorageKey(),nextId);}catch(e){}await loadCompany(nextId);state.view='dashboard';updateCompanySelect();render();alert('Empresa eliminada correctamente.');}catch(e){console.error('deleteCurrentCompany:',e);setStatus('No se pudo eliminar la empresa',false);alert('No se pudo eliminar la empresa. '+authErrorText(e));}
 }
 
-async function initCompanies(restoreView=false){
-const ids=(await getMemberships()).map(String);
-if(!ids.length)throw new Error('Tu usuario inició sesión, pero no tiene ninguna empresa asignada. Asigna una empresa en company_members para continuar.');
+async function initCompanies(){
+const ids=await getMemberships();
+
+if(!ids.length){
+throw new Error('Tu usuario inició sesión, pero no tiene ninguna empresa asignada. Asigna una empresa en company_members para continuar.');
+}
+
 companies=ids.map(id=>({id,name:null}));
-await Promise.all(companies.map(async c=>{try{const {data,error}=await sb.from('company_app_data').select('data').eq('company_id',c.id).maybeSingle();if(error)console.warn('No se pudo leer el nombre de la empresa',c.id,error);else c.name=data?.data?.settings?.name||null;}catch(e){console.warn('No se pudo consultar la empresa',c.id,e);}}));
-let cached=null;try{cached=localStorage.getItem(activeCompanyStorageKey());}catch(e){}
+
+for(const c of companies){
+try{
+const {data,error}=await sb
+.from('company_app_data')
+.select('data')
+.eq('company_id',c.id)
+.maybeSingle();
+
+if(error){
+console.warn('No se pudo leer el nombre de la empresa',c.id,error);
+}else{
+c.name=data?.data?.settings?.name||null;
+}
+}catch(e){
+console.warn('No se pudo consultar la empresa',c.id,e);
+}
+}
+
+let cached=null;
+try{cached=localStorage.getItem(activeCompanyStorageKey());}catch(e){}
+
 currentCompanyId=ids.includes(cached)?cached:ids[0];
-await loadCompany(currentCompanyId,{restoreView});
+state.view='global';
+
+await loadCompany(currentCompanyId);
+
 try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){}
 }
 
 function showLoginScreen(message='',isError=false){
-const startup=document.getElementById('startupScreen');if(startup)startup.style.display='none';
 const login=document.getElementById('loginScreen');
 const app=document.getElementById('app');
 if(app)app.style.display='none';
@@ -4830,7 +4915,6 @@ msg.className='loginMessage'+(isError?' error':'');
 }
 
 function showAppScreen(){
-const startup=document.getElementById('startupScreen');if(startup)startup.style.display='none';
 const login=document.getElementById('loginScreen');
 const app=document.getElementById('app');
 if(login)login.style.display='none';
@@ -4857,19 +4941,19 @@ currentUser=session.user;
 bootPromise=(async()=>{
 try{
 await registerCurrentSession(session);
-await initCompanies(source==='restore');
+await initCompanies();
 
-globalMetrics=[];globalMetricsUserId=null;globalMetricsErrors=[];
+/* General es la pantalla principal: sus datos deben estar preparados
+   antes de mostrar la aplicación, no después de entrar a Inicio. */
+globalMetrics=[];
+globalMetricsUserId=null;
+globalMetricsErrors=[];
+await refreshGlobalMetrics();
+
+state.view='global';
 showAppScreen();
 render();
-
-/* General se actualiza en segundo plano para que el acceso no quede bloqueado
-   esperando una consulta por cada empresa. */
-refreshGlobalMetrics().then(()=>{
-  if(currentUser?.id===session.user.id && state.view==='global')render();
-  if(currentUser?.id===session.user.id)setStatus(globalMetricsErrors.length?'General cargado · revisa conexión':'Sincronizado',!globalMetricsErrors.length);
-}).catch(e=>console.warn('No se pudo actualizar General en segundo plano.',e));
-if(source!=='restore'){state.view='global';saveActiveView('global');render();}
+setStatus(globalMetricsErrors.length?'General cargado · revisa conexión':'Sincronizado',!globalMetricsErrors.length);
 return true;
 }catch(e){
 console.error('Error al preparar la aplicación:',e);
@@ -5014,7 +5098,6 @@ bootPromise=null;
 
 try{
 if(userActiveCompanyKey)localStorage.removeItem(userActiveCompanyKey);
-if(loggedOutUserId){const prefix=ACTIVE_VIEW_KEY+'_'+String(loggedOutUserId)+'_';for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&k.startsWith(prefix))localStorage.removeItem(k);}}
 }catch(e){}
 
 document.getElementById('app').style.display='none';
@@ -5216,8 +5299,8 @@ if(e.key==='Enter'){e.preventDefault();loginUser();}
 });
 
 startupPromise=(async()=>{
-const startup=document.getElementById('startupScreen');if(startup)startup.style.display='flex';
-try{await migrateLegacyCaches();await checkSession();}catch(e){console.error(e);showLoginScreen('No se pudo iniciar el sistema. '+authErrorText(e),true);}
+await migrateLegacyCaches();
+await checkSession();
 })();
 
 </script>
