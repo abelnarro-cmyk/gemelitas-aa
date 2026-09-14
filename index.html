@@ -2051,11 +2051,20 @@ return uniqueRecords(state.income)
 .reduce((s,x)=>s+n(x?.amount),0);
 }
 
+function companyWeekSales(w, qpackOverride=null){
+  if(!w) return 0;
+  const qpack = qpackOverride===null ? isQpackCompany() : !!qpackOverride;
+  const base = qpack
+    ? qpackWeekTotal(w)
+    : DAYS.reduce((sum,d)=>sum+n(w?.days?.[d])*n(w?.price),0);
+  const extras = uniqueRecords(state.sales)
+    .filter(x=>weekForDate(x?.date)===w.start)
+    .reduce((sum,x)=>sum+n(x?.qty)*n(x?.price),0);
+  return base + extras;
+}
+
 function salesTotal(w){
-
-return weekTotal(w)+
-extrasForWeek(w);
-
+  return companyWeekSales(w);
 }
 
 function pendingWeek(w){
@@ -2131,16 +2140,15 @@ ${l}
 }
 
 function navigateTo(view){
+const allowed=new Set(['global','dashboard','week','income','expenses','notes','reports','settings']);
+if(!allowed.has(view))return;
 if(view==='global'){
 state.view='global';
-saveActiveView();
-render();
-return;
-}
-if(!currentCompanyId)
-return;
+}else{
+if(!currentCompanyId)return;
 state.view=view;
-saveActiveView();
+}
+persistNavigationState();
 render();
 }
 
@@ -2626,13 +2634,8 @@ const allExpenses=uniqueRecords(state.expenses);
    personalizada; para cualquier otra empresa se usa el cálculo estándar.
    Los ingresos y gastos siempre salen de los registros reales cargados. */
 const companyIsQpack=isQpackName(state?.settings?.name);
-const salesFromWeeks=weeksList=>weeksList.reduce((sum,w)=>{
-  const base=companyIsQpack
-    ?qpackWeekTotal(w)
-    :DAYS.reduce((t,d)=>t+n(w?.days?.[d])*n(w?.price),0);
-  return sum+base+allSales.filter(x=>weekForDate(x?.date)===w?.start)
-    .reduce((t,x)=>t+n(x?.qty)*n(x?.price),0);
-},0);
+const salesFromWeeks=weeksList=>weeksList.reduce((sum,w)=>
+  sum + companyWeekSales(w,companyIsQpack),0);
 
 const sold=state.period==='todo'?salesFromWeeks(allWeeks):salesFromWeeks(ws);
 
@@ -3885,7 +3888,7 @@ function render(){
 if(!currentCompanyId)
 return;
 
-saveActiveView();
+persistNavigationState();
 saveLocal();
 
 document.getElementById('nav').innerHTML=
@@ -4996,11 +4999,10 @@ await refreshGlobalMetrics();
 if(source==='restore'){
 const restoredView=readActiveView();
 state.view=restoredView||'global';
-saveActiveView();
 }else{
 state.view='global';
-saveActiveView();
 }
+persistNavigationState();
 showAppScreen();
 render();
 setStatus(globalMetricsErrors.length?'General cargado · revisa conexión':'Sincronizado',!globalMetricsErrors.length);
