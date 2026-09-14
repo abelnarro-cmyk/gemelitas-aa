@@ -2617,57 +2617,64 @@ render();
 
 }
 
+function dashboardTotals(){
+  const allWeeks=Array.isArray(state.weeks)?state.weeks:[];
+  const allSales=uniqueRecords(state.sales);
+  const allIncome=uniqueRecords(state.income);
+  const allExpenses=uniqueRecords(state.expenses);
+  const qpack=isQpackName(state?.settings?.name);
+  const selectedWeeks=state.period==='todo'?allWeeks:rangeWeeks();
+
+  /* Inicio es un resumen independiente de la forma en que se presenta Semana.
+     Q.PACK solo cambia el cálculo de sus semanas; no cambia la lógica del resto
+     del dashboard. */
+  const weekSales=w=>{
+    if(!w)return 0;
+    let base=0;
+    if(qpack){
+      normalizeQpackWeek(w);
+      base=qpackWeekTotal(w);
+    }else{
+      base=DAYS.reduce((sum,d)=>sum+n(w?.days?.[d])*n(w?.price),0);
+    }
+    const extras=allSales.filter(x=>weekForDate(x?.date)===w.start)
+      .reduce((sum,x)=>sum+n(x?.qty)*n(x?.price),0);
+    return base+extras;
+  };
+
+  const sales=selectedWeeks.reduce((sum,w)=>sum+weekSales(w),0);
+  const income=state.period==='todo'
+    ?allIncome.reduce((sum,x)=>sum+n(x?.amount),0)
+    :selectedWeeks.reduce((sum,w)=>sum+incomeForWeek(w),0);
+  const businessExpenses=state.period==='todo'
+    ?allExpenses.filter(x=>x?.type==='business').reduce((sum,x)=>sum+n(x?.amount),0)
+    :selectedWeeks.reduce((sum,w)=>sum+expensesForWeek(w),0);
+  const personalExpenses=state.period==='todo'
+    ?allExpenses.filter(x=>x?.type==='personal').reduce((sum,x)=>sum+n(x?.amount),0)
+    :selectedWeeks.reduce((sum,w)=>sum+expensesForWeek(w,'personal'),0);
+  const totalExpenses=state.period==='todo'
+    ?allExpenses.reduce((sum,x)=>sum+n(x?.amount),0)
+    :selectedWeeks.reduce((sum,w)=>sum+expensesForWeek(w),0)
+      +selectedWeeks.reduce((sum,w)=>sum+expensesForWeek(w,'personal'),0);
+  const pending=Math.max(0,sales-income);
+  const profit=sales-businessExpenses;
+  const cash=n(state.settings?.cash)
+    +allIncome.reduce((sum,x)=>sum+n(x?.amount),0)
+    -allExpenses.reduce((sum,x)=>sum+n(x?.amount),0);
+
+  return {sales,income,businessExpenses,personalExpenses,totalExpenses,pending,profit,cash};
+}
+
 function dashboard(){
 
-const ws=rangeWeeks();
-const allWeeks=Array.isArray(state.weeks)?state.weeks:[];
-const allSales=uniqueRecords(state.sales);
-const allIncome=uniqueRecords(state.income);
-const allExpenses=uniqueRecords(state.expenses);
-
-/* En Inicio, "Todo" debe reflejar siempre el total real cargado.
-   Q.PACK calcula sus ventas desde su estructura personalizada qpack;
-   ingresos, gastos y ventas adicionales se toman directamente de sus
-   registros. Los filtros Semana/Mes/Año siguen funcionando por periodo. */
-/* Inicio es un resumen: no depende de cómo se presente Semana.
-   Para Q.PACK las ventas se calculan exclusivamente desde su estructura
-   personalizada; para cualquier otra empresa se usa el cálculo estándar.
-   Los ingresos y gastos siempre salen de los registros reales cargados. */
-const companyIsQpack=isQpackName(state?.settings?.name);
-const salesFromWeeks=weeksList=>weeksList.reduce((sum,w)=>
-  sum + companyWeekSales(w,companyIsQpack),0);
-
-const sold=state.period==='todo'?salesFromWeeks(allWeeks):salesFromWeeks(ws);
-
-const inc=state.period==='todo'
-?allIncome.reduce((s,x)=>s+n(x?.amount),0)
-:ws.reduce((s,w)=>s+incomeForWeek(w),0);
-
-const bus=state.period==='todo'
-?allExpenses.filter(x=>x?.type==='business').reduce((s,x)=>s+n(x?.amount),0)
-:ws.reduce((s,w)=>s+expensesForWeek(w),0);
-
-const per=state.period==='todo'
-?allExpenses.filter(x=>x?.type==='personal').reduce((s,x)=>s+n(x?.amount),0)
-:ws.reduce((s,w)=>s+expensesForWeek(w,'personal'),0);
-
-const pend=state.period==='todo'
-?Math.max(0,sold-inc)
-:ws.reduce((s,w)=>s+pendingWeek(w),0);
-
-const profit=
-sold-bus;
-
-const cash=
-n(state.settings.cash)+
-uniqueRecords(state.income).reduce(
-(s,x)=>s+n(x.amount),
-0
-)-
-uniqueRecords(state.expenses).reduce(
-(s,x)=>s+n(x.amount),
-0
-);
+const totals=dashboardTotals();
+const sold=totals.sales;
+const inc=totals.income;
+const bus=totals.businessExpenses;
+const per=totals.personalExpenses;
+const pend=totals.pending;
+const profit=totals.profit;
+const cash=totals.cash;
 
 return `
 
@@ -4727,12 +4734,16 @@ if(realtimeChannel){try{await sb.removeChannel(realtimeChannel);}catch(e){} real
 localRevision=0; localDirty=false; remotePendingSnapshot=null; baseServerState=null;
 let serverData=null;
 try{const {data,error}=await sb.from('company_app_data').select('company_id,data,updated_at').eq('company_id',id).maybeSingle();if(error)throw error;serverData=data||null;}catch(error){
- const cached=await readLocalCache(id); state=cached?{...structuredClone(DEFAULT),...cached,settings:{...DEFAULT.settings,...(cached.settings||{})}}:structuredClone(DEFAULT); state.view=preservedView||state.view||'dashboard'; ensureWeek(); baseServerState=structuredClone(state); loading=false; updateCompanySelect(); render(); setStatus('Sin conexión · usando datos locales',false); return false;
+ const cached=await readLocalCache(id); state=cached?{...structuredClone(DEFAULT),...cached,settings:{...DEFAULT.settings,...(cached.settings||{})}}:structuredClone(DEFAULT); /* En modo offline, la vista local guardada en este dispositivo tiene prioridad. */
+if(restoreView && preservedView) state.view=preservedView;
+else if(!restoreView) state.view='dashboard';
+else state.view=state.view||'dashboard';
+ensureWeek(); baseServerState=structuredClone(state); loading=false; updateCompanySelect(); render(); setStatus('Sin conexión · usando datos locales',false); return false;
 }
 if(serverData?.data){const incoming=serverData.data;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(state);}else{state=structuredClone(DEFAULT);baseServerState=structuredClone(state);}
 const appearance=getGlobalAppearance();state.settings.theme=appearance.theme;state.settings.font=appearance.font;
 const qpackMigrated=normalizeQpackWeeks();
-state.view=preservedView||state.view||'dashboard';ensureWeek();loading=false;
+if(restoreView && preservedView)state.view=preservedView;else if(!restoreView)state.view='dashboard';else state.view=state.view||'dashboard';ensureWeek();loading=false;
 if(!serverData?.data){localDirty=true;const saved=await persist();if(!saved){await writeIndexedCache(id,state);setStatus('Empresa nueva · pendiente de sincronizar',false);}}else{
 if(qpackMigrated){localDirty=true;await persist();}
 await writeIndexedCache(id,state);try{localStorage.removeItem('gemelitas_cache_'+id);}catch(e){}setStatus('Sincronizado');}
