@@ -1983,51 +1983,33 @@ n(w.price),
 
 }
 
-function extrasForWeek(w){
-
-return state.sales
-.filter(
-x=>weekForDate(x.date)===w.start
-)
-.reduce(
-(s,x)=>
-s+n(x.qty)*n(x.price),
-0
-);
-
+function uniqueRecords(list){
+const seen=new Set();
+return (Array.isArray(list)?list:[]).filter(x=>{
+const id=String(x?.id||'').trim();
+if(!id)return true;
+if(seen.has(id))return false;
+seen.add(id);
+return true;
+});
 }
 
-function expensesForWeek(
-w,
-type='business'
-){
+function extrasForWeek(w){
+return uniqueRecords(state.sales)
+.filter(x=>weekForDate(x?.date)===w.start)
+.reduce((s,x)=>s+n(x?.qty)*n(x?.price),0);
+}
 
-return state.expenses
-.filter(
-x=>
-weekForDate(x.date)===w.start &&
-x.type===type
-)
-.reduce(
-(s,x)=>s+n(x.amount),
-0
-);
-
+function expensesForWeek(w,type='business'){
+return uniqueRecords(state.expenses)
+.filter(x=>weekForDate(x?.date)===w.start&&x?.type===type)
+.reduce((s,x)=>s+n(x?.amount),0);
 }
 
 function incomeForWeek(w){
-
-return state.income
-.filter(
-x=>
-x.weekId===w.id ||
-weekForDate(x.date)===w.start
-)
-.reduce(
-(s,x)=>s+n(x.amount),
-0
-);
-
+return uniqueRecords(state.income)
+.filter(x=>x?.weekId===w.id||weekForDate(x?.date)===w.start)
+.reduce((s,x)=>s+n(x?.amount),0);
 }
 
 function salesTotal(w){
@@ -2187,9 +2169,9 @@ continue;
 }
 
 const weeks=Array.isArray(d.weeks)?d.weeks:[];
-const sales=Array.isArray(d.sales)?d.sales:[];
-const income=Array.isArray(d.income)?d.income:[];
-const expenses=Array.isArray(d.expenses)?d.expenses:[];
+const sales=uniqueRecords(d.sales);
+const income=uniqueRecords(d.income);
+const expenses=uniqueRecords(d.expenses);
 
 const qpackCompany=isQpackName(d?.settings?.name);
 const salesTotalLocal=w=>
@@ -2286,9 +2268,9 @@ globalMetricsErrors.push({id,message:e?.message||String(e)});
 const fallback=(String(currentCompanyId)===id)?state:await readLocalCache(id);
 if(fallback){
 const weeks=Array.isArray(fallback.weeks)?fallback.weeks:[];
-const sales=Array.isArray(fallback.sales)?fallback.sales:[];
-const income=Array.isArray(fallback.income)?fallback.income:[];
-const expenses=Array.isArray(fallback.expenses)?fallback.expenses:[];
+const sales=uniqueRecords(fallback.sales);
+const income=uniqueRecords(fallback.income);
+const expenses=uniqueRecords(fallback.expenses);
 
 const qpackCompany=isQpackName(fallback?.settings?.name);
 const salesTotalLocal=w=>
@@ -2619,11 +2601,11 @@ sold-bus;
 
 const cash=
 n(state.settings.cash)+
-state.income.reduce(
+uniqueRecords(state.income).reduce(
 (s,x)=>s+n(x.amount),
 0
 )-
-state.expenses.reduce(
+uniqueRecords(state.expenses).reduce(
 (s,x)=>s+n(x.amount),
 0
 );
