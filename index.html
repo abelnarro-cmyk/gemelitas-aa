@@ -1132,7 +1132,7 @@ font:n(state.settings.font)||16
 
 const DEFAULT={
 view:'dashboard',
-period:'semana',
+period:'todo',
 settings:{
 name:'GEMELITAS A&A S.A.C.',
 cash:0,
@@ -1231,9 +1231,26 @@ const DEVICE_ID_KEY='gemelitas_device_id_v2';
 const SOUND_KEY='gemelitas_button_sound_v1';
 const CACHE_DB_NAME='gemelitas_local_cache_v2';
 const ACTIVE_COMPANY_KEY='gemelitas_active_company_v2';
+const ACTIVE_VIEW_KEY='gemelitas_active_view_v2';
 
 function activeCompanyStorageKey(){
 return ACTIVE_COMPANY_KEY+'_'+String(currentUser?.id||'guest');
+}
+
+function activeViewStorageKey(){
+return ACTIVE_VIEW_KEY+'_'+String(currentUser?.id||'guest');
+}
+
+function saveActiveView(){
+try{localStorage.setItem(activeViewStorageKey(),String(state?.view||'dashboard'));}catch(e){}
+}
+
+function readActiveView(){
+try{
+const v=localStorage.getItem(activeViewStorageKey());
+const allowed=new Set(['global','dashboard','week','income','expenses','notes','reports','settings']);
+return allowed.has(v)?v:null;
+}catch(e){return null;}
 }
 
 const CACHE_STORE='company_cache';
@@ -2006,9 +2023,19 @@ return uniqueRecords(state.expenses)
 .reduce((s,x)=>s+n(x?.amount),0);
 }
 
+function incomeBelongsToWeek(x,w){
+if(!x||!w)return false;
+const assignedWeek=String(x?.weekId||'').trim();
+/* Si el registro tiene una semana asignada explícitamente, esa semana
+   es la única que debe contabilizarlo. La fecha solo se usa como respaldo
+   para registros antiguos que no tienen weekId. */
+if(assignedWeek)return assignedWeek===String(w.id);
+return weekForDate(x?.date)===w.start;
+}
+
 function incomeForWeek(w){
 return uniqueRecords(state.income)
-.filter(x=>x?.weekId===w.id||weekForDate(x?.date)===w.start)
+.filter(x=>incomeBelongsToWeek(x,w))
 .reduce((s,x)=>s+n(x?.amount),0);
 }
 
@@ -2094,12 +2121,14 @@ ${l}
 function navigateTo(view){
 if(view==='global'){
 state.view='global';
+saveActiveView();
 render();
 return;
 }
 if(!currentCompanyId)
 return;
 state.view=view;
+saveActiveView();
 render();
 }
 
@@ -2209,7 +2238,7 @@ if(!start)return;
 
 const ws=salesTotalLocal(w);
 const wi=income
-.filter(x=>x?.weekId===w?.id || weekForDate(x?.date)===start)
+.filter(x=>incomeBelongsToWeek(x,w))
 .reduce((sum,x)=>sum+n(x?.amount),0);
 
 const we=expenses
@@ -2225,7 +2254,13 @@ if(start&&!weeklyMap[start])addWeekly(start,0,0,0);
 });
 
 income.forEach(x=>{
-const start=weekForDate(x?.date);
+let start='';
+const assignedWeek=String(x?.weekId||'').trim();
+if(assignedWeek){
+start=String(weeks.find(w=>String(w?.id)===assignedWeek)?.start||'');
+}else{
+start=weekForDate(x?.date);
+}
 if(start&&!weeklyMap[start])addWeekly(start,0,0,0);
 });
 
@@ -2920,7 +2955,8 @@ selectedWeek().id
 }
 
 function weekIncomeList(w){
-return state.income.filter(x=>x.weekId===w.id||weekForDate(x.date)===w.start);
+return uniqueRecords(state.income)
+.filter(x=>incomeBelongsToWeek(x,w));
 }
 
 function weekExpenseList(w){
@@ -3828,6 +3864,7 @@ function render(){
 if(!currentCompanyId)
 return;
 
+saveActiveView();
 saveLocal();
 
 document.getElementById('nav').innerHTML=
@@ -4669,12 +4706,12 @@ try{const {data,error}=await sb.from('company_app_data').select('company_id,data
 if(serverData?.data){const incoming=serverData.data;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(state);}else{state=structuredClone(DEFAULT);baseServerState=structuredClone(state);}
 const appearance=getGlobalAppearance();state.settings.theme=appearance.theme;state.settings.font=appearance.font;
 const qpackMigrated=normalizeQpackWeeks();
-state.view='dashboard';ensureWeek();loading=false;
+state.view=state.view||'dashboard';ensureWeek();loading=false;
 if(!serverData?.data){localDirty=true;const saved=await persist();if(!saved){await writeIndexedCache(id,state);setStatus('Empresa nueva · pendiente de sincronizar',false);}}else{
 if(qpackMigrated){localDirty=true;await persist();}
 await writeIndexedCache(id,state);try{localStorage.removeItem('gemelitas_cache_'+id);}catch(e){}setStatus('Sincronizado');}
 updateCompanySelect();render();
-try{realtimeChannel=sb.channel('company_app_data_'+id).on('postgres_changes',{event:'*',schema:'public',table:'company_app_data',filter:'company_id=eq.'+id},payload=>{const incoming=payload?.new?.data;if(!incoming||String(payload?.new?.company_id)!==String(currentCompanyId))return;if(localDirty){remotePendingSnapshot=structuredClone(incoming);setStatus('Cambios de otro dispositivo pendientes',false);return;}const incomingTime=Date.parse(incoming.updatedAt||payload?.new?.updated_at||'');const localTime=Date.parse(state.updatedAt||'');if(Number.isFinite(incomingTime)&&Number.isFinite(localTime)&&incomingTime<=localTime)return;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(incoming);remotePendingSnapshot=null;state.view='dashboard';saveLocal();render();setStatus('Sincronizado');}).subscribe(status=>{if(status==='SUBSCRIBED')setStatus('Sincronizado');});}catch(e){console.warn('No se pudo activar la sincronización en tiempo real.',e);}
+try{realtimeChannel=sb.channel('company_app_data_'+id).on('postgres_changes',{event:'*',schema:'public',table:'company_app_data',filter:'company_id=eq.'+id},payload=>{const incoming=payload?.new?.data;if(!incoming||String(payload?.new?.company_id)!==String(currentCompanyId))return;if(localDirty){remotePendingSnapshot=structuredClone(incoming);setStatus('Cambios de otro dispositivo pendientes',false);return;}const incomingTime=Date.parse(incoming.updatedAt||payload?.new?.updated_at||'');const localTime=Date.parse(state.updatedAt||'');if(Number.isFinite(incomingTime)&&Number.isFinite(localTime)&&incomingTime<=localTime)return;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(incoming);remotePendingSnapshot=null;state.view=readActiveView()||state.view||'dashboard';saveLocal();render();setStatus('Sincronizado');}).subscribe(status=>{if(status==='SUBSCRIBED')setStatus('Sincronizado');});}catch(e){console.warn('No se pudo activar la sincronización en tiempo real.',e);}
 try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){} return true;
 }
 
@@ -4810,6 +4847,7 @@ if(localDirty)await syncNow();
 await loadCompany(id);
 
 state.view='dashboard';
+saveActiveView();
 
 try{localStorage.setItem(
 activeCompanyStorageKey(),
@@ -4877,7 +4915,7 @@ let cached=null;
 try{cached=localStorage.getItem(activeCompanyStorageKey());}catch(e){}
 
 currentCompanyId=ids.includes(cached)?cached:ids[0];
-state.view='global';
+state.view=readActiveView()||'global';
 
 await loadCompany(currentCompanyId);
 
@@ -4932,7 +4970,14 @@ globalMetricsUserId=null;
 globalMetricsErrors=[];
 await refreshGlobalMetrics();
 
+if(source==='restore'){
+const restoredView=readActiveView();
+state.view=restoredView||'global';
+saveActiveView();
+}else{
 state.view='global';
+saveActiveView();
+}
 showAppScreen();
 render();
 setStatus(globalMetricsErrors.length?'General cargado · revisa conexión':'Sincronizado',!globalMetricsErrors.length);
@@ -5080,6 +5125,7 @@ bootPromise=null;
 
 try{
 if(userActiveCompanyKey)localStorage.removeItem(userActiveCompanyKey);
+localStorage.removeItem(activeViewStorageKey());
 }catch(e){}
 
 document.getElementById('app').style.display='none';
