@@ -1253,6 +1253,18 @@ return allowed.has(v)?v:null;
 }catch(e){return null;}
 }
 
+function persistNavigationState(){
+try{
+if(currentUser?.id){
+localStorage.setItem(activeCompanyStorageKey(),String(currentCompanyId||''));
+localStorage.setItem(activeViewStorageKey(),String(state?.view||'dashboard'));
+}
+}catch(e){}
+}
+
+window.addEventListener('beforeunload',persistNavigationState);
+window.addEventListener('pagehide',persistNavigationState);
+
 const CACHE_STORE='company_cache';
 let cacheDbPromise=null;
 let cacheWriteTimer=null;
@@ -2584,7 +2596,7 @@ if(!id||!currentUser)
 return;
 
 if(localDirty)await syncNow();
-await loadCompany(id);
+await loadCompany(id,{restoreView:false});
 
 state.view='dashboard';
 
@@ -2609,9 +2621,20 @@ const allExpenses=uniqueRecords(state.expenses);
    Q.PACK calcula sus ventas desde su estructura personalizada qpack;
    ingresos, gastos y ventas adicionales se toman directamente de sus
    registros. Los filtros Semana/Mes/Año siguen funcionando por periodo. */
-const sold=state.period==='todo'
-?allWeeks.reduce((s,w)=>s+salesTotal(w),0)
-:ws.reduce((s,w)=>s+salesTotal(w),0);
+/* Inicio es un resumen: no depende de cómo se presente Semana.
+   Para Q.PACK las ventas se calculan exclusivamente desde su estructura
+   personalizada; para cualquier otra empresa se usa el cálculo estándar.
+   Los ingresos y gastos siempre salen de los registros reales cargados. */
+const companyIsQpack=isQpackName(state?.settings?.name);
+const salesFromWeeks=weeksList=>weeksList.reduce((sum,w)=>{
+  const base=companyIsQpack
+    ?qpackWeekTotal(w)
+    :DAYS.reduce((t,d)=>t+n(w?.days?.[d])*n(w?.price),0);
+  return sum+base+allSales.filter(x=>weekForDate(x?.date)===w?.start)
+    .reduce((t,x)=>t+n(x?.qty)*n(x?.price),0);
+},0);
+
+const sold=state.period==='todo'?salesFromWeeks(allWeeks):salesFromWeeks(ws);
 
 const inc=state.period==='todo'
 ?allIncome.reduce((s,x)=>s+n(x?.amount),0)
@@ -4692,15 +4715,16 @@ throw new Error('No se pudieron cargar tus empresas. '+(error.message||'Verifica
 return [...new Set((data||[]).map(x=>x.company_id).filter(Boolean))];
 }
 
-async function loadCompany(id){
+async function loadCompany(id,options={}){
 if(!id||!currentUser?.id)return false;
-const preservedView=readActiveView();
+const restoreView=options.restoreView===true;
+const preservedView=restoreView?readActiveView():null;
 currentCompanyId=String(id); loading=true; setStatus('Cargando empresa…');
 if(realtimeChannel){try{await sb.removeChannel(realtimeChannel);}catch(e){} realtimeChannel=null;}
 localRevision=0; localDirty=false; remotePendingSnapshot=null; baseServerState=null;
 let serverData=null;
 try{const {data,error}=await sb.from('company_app_data').select('company_id,data,updated_at').eq('company_id',id).maybeSingle();if(error)throw error;serverData=data||null;}catch(error){
- const cached=await readLocalCache(id); state=cached?{...structuredClone(DEFAULT),...cached,settings:{...DEFAULT.settings,...(cached.settings||{})}}:structuredClone(DEFAULT); state.view='dashboard'; ensureWeek(); baseServerState=structuredClone(state); loading=false; updateCompanySelect(); render(); setStatus('Sin conexión · usando datos locales',false); return false;
+ const cached=await readLocalCache(id); state=cached?{...structuredClone(DEFAULT),...cached,settings:{...DEFAULT.settings,...(cached.settings||{})}}:structuredClone(DEFAULT); state.view=preservedView||state.view||'dashboard'; ensureWeek(); baseServerState=structuredClone(state); loading=false; updateCompanySelect(); render(); setStatus('Sin conexión · usando datos locales',false); return false;
 }
 if(serverData?.data){const incoming=serverData.data;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(state);}else{state=structuredClone(DEFAULT);baseServerState=structuredClone(state);}
 const appearance=getGlobalAppearance();state.settings.theme=appearance.theme;state.settings.font=appearance.font;
@@ -4710,7 +4734,7 @@ if(!serverData?.data){localDirty=true;const saved=await persist();if(!saved){awa
 if(qpackMigrated){localDirty=true;await persist();}
 await writeIndexedCache(id,state);try{localStorage.removeItem('gemelitas_cache_'+id);}catch(e){}setStatus('Sincronizado');}
 updateCompanySelect();render();
-try{realtimeChannel=sb.channel('company_app_data_'+id).on('postgres_changes',{event:'*',schema:'public',table:'company_app_data',filter:'company_id=eq.'+id},payload=>{const incoming=payload?.new?.data;if(!incoming||String(payload?.new?.company_id)!==String(currentCompanyId))return;if(localDirty){remotePendingSnapshot=structuredClone(incoming);setStatus('Cambios de otro dispositivo pendientes',false);return;}const incomingTime=Date.parse(incoming.updatedAt||payload?.new?.updated_at||'');const localTime=Date.parse(state.updatedAt||'');if(Number.isFinite(incomingTime)&&Number.isFinite(localTime)&&incomingTime<=localTime)return;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(incoming);remotePendingSnapshot=null;state.view=readActiveView()||state.view||'dashboard';saveLocal();render();setStatus('Sincronizado');}).subscribe(status=>{if(status==='SUBSCRIBED')setStatus('Sincronizado');});}catch(e){console.warn('No se pudo activar la sincronización en tiempo real.',e);}
+try{realtimeChannel=sb.channel('company_app_data_'+id).on('postgres_changes',{event:'*',schema:'public',table:'company_app_data',filter:'company_id=eq.'+id},payload=>{const incoming=payload?.new?.data;if(!incoming||String(payload?.new?.company_id)!==String(currentCompanyId))return;if(localDirty){remotePendingSnapshot=structuredClone(incoming);setStatus('Cambios de otro dispositivo pendientes',false);return;}const incomingTime=Date.parse(incoming.updatedAt||payload?.new?.updated_at||'');const localTime=Date.parse(state.updatedAt||'');if(Number.isFinite(incomingTime)&&Number.isFinite(localTime)&&incomingTime<=localTime)return;state={...structuredClone(DEFAULT),...incoming,settings:{...DEFAULT.settings,...(incoming.settings||{})}};baseServerState=structuredClone(incoming);remotePendingSnapshot=null;saveActiveView();saveLocal();render();setStatus('Sincronizado');}).subscribe(status=>{if(status==='SUBSCRIBED')setStatus('Sincronizado');});}catch(e){console.warn('No se pudo activar la sincronización en tiempo real.',e);}
 try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){} return true;
 }
 
@@ -4843,7 +4867,7 @@ return;
 }
 
 if(localDirty)await syncNow();
-await loadCompany(id);
+await loadCompany(id,{restoreView:false});
 
 state.view='dashboard';
 saveActiveView();
@@ -4916,7 +4940,7 @@ try{cached=localStorage.getItem(activeCompanyStorageKey());}catch(e){}
 currentCompanyId=ids.includes(cached)?cached:ids[0];
 state.view=readActiveView()||'global';
 
-await loadCompany(currentCompanyId);
+await loadCompany(currentCompanyId,{restoreView:true});
 
 try{localStorage.setItem(activeCompanyStorageKey(),currentCompanyId);}catch(e){}
 }
