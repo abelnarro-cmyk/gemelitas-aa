@@ -2623,7 +2623,12 @@ function dashboardTotals(){
   const allIncome=uniqueRecords(state.income);
   const allExpenses=uniqueRecords(state.expenses);
   const qpack=isQpackName(state?.settings?.name);
-  const selectedWeeks=state.period==='todo'?allWeeks:rangeWeeks();
+
+  /* Inicio usa exactamente el mismo selector de periodo para todas las
+     empresas. La personalización de Q.PACK vive únicamente en el cálculo de
+     cada semana (desayuno, almuerzo y cena); nunca cambia qué semanas muestra
+     Inicio. Así, Q.PACK se comporta igual que cualquier empresa normal. */
+  const selectedWeeks=rangeWeeks();
 
   /* Inicio es un resumen independiente de la forma en que se presenta Semana.
      Q.PACK solo cambia el cálculo de sus semanas; no cambia la lógica del resto
